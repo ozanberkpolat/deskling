@@ -6,6 +6,12 @@ import * as shiba from './shiba.js'
 import * as dragon from './dragon.js'
 import * as owl from './owl.js'
 import * as robot from './robot.js'
+import * as cat from './cat.js'
+import * as frog from './frog.js'
+import * as ghost from './ghost.js'
+import * as alien from './alien.js'
+import * as duck from './duck.js'
+import * as cactus from './cactus.js'
 
 export const CLIP_NAMES = ['sleep', 'curl', 'wake', 'type', 'jump', 'wag', 'sitUp', 'stare', 'bark', 'yawn', 'oops']
 
@@ -27,6 +33,12 @@ export const MASCOTS = {
   dragon: make('dragon', 'Dragon', dragon, 'growl'),
   owl: make('owl', 'Owl', owl, 'hoot'),
   robot: make('robot', 'Robot', robot, 'beep'),
+  cat: make('cat', 'Cat', cat, 'meow'),
+  frog: make('frog', 'Frog', frog, 'ribbit'),
+  ghost: make('ghost', 'Ghost', ghost, 'boo'),
+  alien: make('alien', 'Alien', alien, 'warble'),
+  duck: make('duck', 'Rubber duck', duck, 'quack'),
+  cactus: make('cactus', 'Cactus', cactus, 'chime'),
 }
 export const mascotOf = id => MASCOTS[id] || MASCOTS.shiba
 

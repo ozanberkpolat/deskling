@@ -64,6 +64,56 @@ export const VOICES = {
     note(c, 'square', 0, 1320, 1320, 0.08, 1)
     note(c, 'square', 0.12, 1760, 1760, 0.08, 1)
   },
+  // cat: one "mew", a triangle that rises then falls
+  meow(v) {
+    const c = ctx(0.3 * v)
+    note(c, 'triangle', 0, 620, 900, 0.18, 1)
+    note(c, 'triangle', 0.16, 900, 560, 0.2, 0.8)
+  },
+  // frog: "rib-bit", two low buzzy bursts (square under a fast tremolo)
+  ribbit(v) {
+    const c = ctx(0.22 * v)
+    for (const [at, f] of [[0, 210], [0.17, 260]]) {
+      const o = note(c, 'square', at, f, f * 0.9, 0.12, 1)
+      const lfo = ac.createOscillator(), depth = ac.createGain()
+      lfo.frequency.value = 38; depth.gain.value = 60
+      lfo.connect(depth).connect(o.frequency)
+      lfo.start(c.t + at); lfo.stop(c.t + at + 0.14)
+    }
+  },
+  // ghost: a slow wobbling "boo" sliding down
+  boo(v) {
+    const c = ctx(0.32 * v)
+    const o = note(c, 'sine', 0, 330, 200, 0.55, 1)
+    const lfo = ac.createOscillator(), depth = ac.createGain()
+    lfo.frequency.value = 5; depth.gain.value = 14
+    lfo.connect(depth).connect(o.frequency)
+    lfo.start(c.t); lfo.stop(c.t + 0.58)
+  },
+  // alien: a quick high warble
+  warble(v) {
+    const c = ctx(0.2 * v)
+    const o = note(c, 'sine', 0, 1100, 1700, 0.32, 1)
+    const lfo = ac.createOscillator(), depth = ac.createGain()
+    lfo.frequency.value = 22; depth.gain.value = 180
+    lfo.connect(depth).connect(o.frequency)
+    lfo.start(c.t); lfo.stop(c.t + 0.34)
+  },
+  // rubber duck: a squeaky "quack", nasal sawtooth through a band-pass
+  quack(v) {
+    const c = ctx(0.3 * v)
+    const bp = ac.createBiquadFilter()
+    bp.type = 'bandpass'; bp.frequency.value = 1300; bp.Q.value = 2.5
+    bp.connect(c.out)
+    note({ t: c.t, out: bp }, 'sawtooth', 0, 520, 380, 0.16, 1)
+    note({ t: c.t, out: bp }, 'sawtooth', 0.19, 500, 360, 0.14, 0.8)
+  },
+  // cactus: two soft bell tones, like a flower opening
+  chime(v) {
+    const c = ctx(0.22 * v)
+    note(c, 'sine', 0, 1568, 1568, 0.35, 1)
+    note(c, 'sine', 0.12, 2093, 2093, 0.45, 0.8)
+  },
 }
 
 export function play(voice, volume = 0.5) {

@@ -23,6 +23,12 @@ docs are in `README.md`; this file is for working on the code.
 - Release: bump `version` in `package.json`, tag `vX.Y.Z`, push the tag. The workflow builds the
   installer on Windows and publishes it as `deskling-setup.exe`.
 
+## Website
+`https://obp.com.tr/deskling` lives in the obp.com.tr-site repo (`deskling/index.html`, design
+"Big buddy": one giant live mascot on a light page). Its `deskling/js/` is a COPY of
+`src/renderer/{dog,draw}.js` and `src/shared/sprites/*.js`: after changing a sprite or adding a
+mascot, copy them over and run that repo's deploy workflow, or the page shows the old set.
+
 ## History
 This app was called cc-dog until v1.0.0. On first start Deskling copies `%APPDATA%\cc-dog`'s
 `config.json`, `token` and `hook-token` (`migrateFrom` in `src/main/config.js`), and treats hooks

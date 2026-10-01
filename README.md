@@ -6,7 +6,7 @@
 
 <p align="center"><a href="https://github.com/ozanberkpolat/deskling/releases/latest/download/deskling-setup.exe"><b>Download for Windows</b></a> · <a href="https://obp.com.tr/deskling">Website</a></p>
 
-<p align="center"><img src="docs/moods.png" width="610" alt="Four mascots (shiba, dragon, owl, robot) in four moods: idle, working, waiting, finished"></p>
+<p align="center"><img src="docs/moods.png" width="820" alt="Ten mascots (shiba, dragon, owl, robot, cat, frog, ghost, alien, rubber duck, cactus) in four moods: idle, working, waiting, finished"></p>
 
 Start a long task in Claude Code, switch to something else, and stop checking the terminal. Deskling
 sleeps while nothing happens, gets to work while a session works, and sits up and calls you (once)
@@ -42,7 +42,8 @@ Windows 10 and 11. A macOS version is planned.
 - **Drag** it anywhere; it snaps to the nearest corner of whichever screen you drop it on. Drop it
   past the edge to tuck it in, leaving a thin strip that slides out on hover.
 - **Ctrl+Alt+D** opens and closes the list from anywhere.
-- **Tray icon** (or right-click the box): mascot (shiba, dragon, owl, robot), shape, corner,
+- **Tray icon** (or right-click the box): mascot (shiba, dragon, owl, robot, cat, frog, ghost,
+  alien, rubber duck or cactus), shape, corner,
   sound and volume, quiet hours, idle opacity, hide for an hour, start at login.
 
 It gets out of the way on its own: it hides and stays silent while a full-screen app or a
