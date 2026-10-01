@@ -11,7 +11,7 @@ export const IDENTITY = {
   name: 'OzanBerkPolat.DesklingDeskBuddy',
   publisher: 'CN=CE54EF76-5C7E-4E9A-99C3-9CD72C74D9E7',
   publisherDisplayName: 'Ozan Berk Polat',
-  displayName: 'Deskling Desk Buddy',          // the name reserved in Partner Center ("Deskling" was taken)
+  displayName: 'Deskling: Desk Buddy',         // exactly as reserved in Partner Center ("Deskling" was taken)
 }
 
 const root = fileURLToPath(new URL('..', import.meta.url))

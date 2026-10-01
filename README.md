@@ -27,7 +27,7 @@ The ring around it tells you the state at a glance:
 
 Two ways to get the same app. Pick one, not both (they would share the hooks and port 8033).
 
-- **Microsoft Store**, as *Deskling Desk Buddy* (the plain name was taken there). Signed by
+- **Microsoft Store**, as *Deskling: Desk Buddy* (the plain name was taken there). Signed by
   Microsoft, so it installs with Smart App Control on, and it updates itself. *The listing is in
   review; the link goes here once it is live.*
 - **Installer from GitHub:** [`deskling-setup.exe`](https://github.com/ozanberkpolat/deskling/releases/latest/download/deskling-setup.exe).

@@ -1,6 +1,6 @@
-# Microsoft Store listing: Deskling Desk Buddy
+# Microsoft Store listing: Deskling: Desk Buddy
 
-Everything Partner Center asks for, ready to paste. Product: **Deskling Desk Buddy**
+Everything Partner Center asks for, ready to paste. Product: **Deskling: Desk Buddy**
 (`OzanBerkPolat.DesklingDeskBuddy`, publisher `CN=CE54EF76-5C7E-4E9A-99C3-9CD72C74D9E7`).
 The package is the `deskling-msix` artifact of the release workflow (`deskling.msix`, unsigned; the
 Store signs it).
@@ -24,7 +24,7 @@ Expected rating: 3+ / Everyone.
 
 ## Store listing (English, United States)
 
-**Product name:** Deskling Desk Buddy
+**Product name:** Deskling: Desk Buddy
 
 **Short description** (shows in search):
 > A pixel-art desk buddy that watches your Claude Code sessions and calls you when one needs you.
