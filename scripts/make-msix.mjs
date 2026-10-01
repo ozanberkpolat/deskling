@@ -2,7 +2,7 @@
 // logo assets, in dist/msix/. The release workflow then runs makeappx on it. The Store signs the
 // package itself, so it is uploaded unsigned. Identity values come from Partner Center (Product
 // identity); they are not secrets.
-import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { LOGO_COLORS, logoRows } from '../src/shared/sprites/logo.js'
 import { png } from '../src/main/png.js'
@@ -15,7 +15,7 @@ export const IDENTITY = {
 }
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-const pkg = (await import(root + 'package.json', { with: { type: 'json' } })).default
+const pkg = JSON.parse(readFileSync(root + 'package.json', 'utf8'))
 const version = (process.env.DESKLING_VERSION || pkg.version).split('.').concat('0', '0', '0').slice(0, 3).join('.') + '.0'
 const out = root + 'dist/msix/'
 

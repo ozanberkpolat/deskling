@@ -63,6 +63,7 @@ jobs:
         run: |
           $env:DESKLING_VERSION = if ('${{ github.ref_name }}' -like 'v*') { '${{ github.ref_name }}'.TrimStart('v') } else { '' }
           node scripts/make-msix.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $sdk = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64' -Directory | Sort-Object Name | Select-Object -Last 1
           & (Join-Path $sdk.FullName 'makeappx.exe') pack /d dist\msix /p dist\deskling.msix /o
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
