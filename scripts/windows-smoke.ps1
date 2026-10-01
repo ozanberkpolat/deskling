@@ -35,6 +35,9 @@ $settings = Join-Path $env:USERPROFILE '.claude\settings.json'
 $appdata = Join-Path $env:APPDATA 'deskling'
 $old = Join-Path $env:APPDATA 'cc-dog'
 
+# a fresh runner has neither key yet
+foreach ($k in $run, $uninst) { if (-not (Test-Path $k)) { New-Item -Path $k -Force | Out-Null } }
+
 # ── 1. an older cc-dog install, with settings and hooks, and one hook of the user's own ──
 New-Item -ItemType Directory -Force $old, (Join-Path $programs 'cc-dog'), (Split-Path $settings) | Out-Null
 '{"corner":"bl","localHooks":true,"relayUrl":"","hideFromCapture":false,"hideInFullscreen":false}' | Set-Content (Join-Path $old 'config.json')
