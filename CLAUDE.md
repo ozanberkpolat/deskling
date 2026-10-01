@@ -21,7 +21,9 @@ docs are in `README.md`; this file is for working on the code.
 - `preview.html` drives the real renderer and reducer in a browser with scenario buttons
   (`python -m http.server`, then `/preview.html`); `npm start -- --gallery` shows every clip.
 - Release: bump `version` in `package.json`, tag `vX.Y.Z`, push the tag. The workflow builds the
-  installer on Windows and publishes it as `deskling-setup.exe`.
+  installer on Windows, runs `scripts/windows-smoke.ps1` on a fresh runner (upgrade from cc-dog, hooks,
+  the first-start question, uninstall; screenshots in the `smoke-results` artifact) and publishes
+  only if that passed. "Run workflow" by hand does the same without publishing.
 
 ## Website
 `https://obp.com.tr/deskling` lives in the obp.com.tr-site repo (`deskling/index.html`, design

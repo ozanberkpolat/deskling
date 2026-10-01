@@ -33,7 +33,7 @@ const CLAUDE_SETTINGS = join(homedir(), '.claude', 'settings.json')
 
 if (arg('remove-hooks')) {
   try { removeHooks(CLAUDE_SETTINGS) } catch {}          // a broken settings.json is left untouched
-  app.exit(0)
+  process.exit(0)                                         // now: nothing below may run (no migration, no config)
 } else if (!app.requestSingleInstanceLock()) app.exit(0)
 app.setAppUserModelId('deskling')
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true } }])
