@@ -102,8 +102,20 @@ powershell.exe -NoProfile -Command @'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 $name = [System.Windows.Automation.AutomationElement]::NameProperty
 $cond = New-Object System.Windows.Automation.PropertyCondition($name, 'Watch Claude Code')
-$btn = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
-if ($btn) { $btn.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() } else { Write-Host 'button not found' }
+$hits = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
+$done = $false
+foreach ($e in $hits) {
+  $p = $null
+  if (-not $done -and $e.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$p)) { $p.Invoke(); $done = $true }
+}
+if (-not $done -and $hits.Count) {
+  # no Invoke pattern on this dialog's button: click the middle of it
+  Add-Type -Namespace W -Name U -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y); [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);'
+  $r = $hits[0].Current.BoundingRectangle
+  [W.U]::SetCursorPos([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2)); Start-Sleep -Milliseconds 200
+  [W.U]::mouse_event(2, 0, 0, 0, 0); [W.U]::mouse_event(4, 0, 0, 0, 0); $done = $true
+}
+Write-Host "first-start button: $($hits.Count) match(es), pressed=$done"
 '@
 Check (Until { (Ours).Count -eq 10 } 20) 'answering "Watch Claude Code" adds the hooks'
 Shot '4-after-yes'
