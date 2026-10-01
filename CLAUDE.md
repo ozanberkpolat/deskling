@@ -31,6 +31,16 @@ docs are in `README.md`; this file is for working on the code.
 `src/renderer/{dog,draw}.js` and `src/shared/sprites/*.js`: after changing a sprite or adding a
 mascot, copy them over and run that repo's deploy workflow, or the page shows the old set.
 
+## Film
+`videos/` is the 20 s silent landing film (Remotion 4.0.529; brief and rules in `videos/BRAND.md`,
+timeline in `videos/src/film/cues.ts`). The mascot in it is a frame-driven twin of
+`src/renderer/dog.js` using the real sprite modules. Fonts are not in git: download Jersey 10,
+Instrument Sans and JetBrains Mono from github.com/google/fonts into `videos/public/fonts/`
+(`Jersey10.ttf`, `InstrumentSans.ttf`, `JetBrainsMono.ttf`). Render in Docker
+(`docker build -t deskling-remotion -f Dockerfile.render .`, then `scripts/final.sh vN`), check
+with `scripts/verify.py` (probe a corner: frame 0's centre is the terminal), copy
+`deskling-film.{mp4,webm}` + `poster.jpg` to the site's `deskling/film.*` and bump `?v=` there.
+
 ## History
 This app was called cc-dog until v1.0.0. On first start Deskling copies `%APPDATA%\cc-dog`'s
 `config.json`, `token` and `hook-token` (`migrateFrom` in `src/main/config.js`), and treats hooks

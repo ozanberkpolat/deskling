@@ -47,7 +47,7 @@ jobs:
           node scripts/make-icon.mjs
           npx @electron/packager . deskling --platform=win32 --arch=x64 --asar --out=dist --overwrite `
             --app-version=$version --icon=build/icon.ico `
-            --ignore='^/(fixtures|test|scripts|dist|build|docs|installer|preview\.html|\.github)($|/)'
+            --ignore='^/(fixtures|test|scripts|dist|build|docs|videos|installer|preview\.html|\.github)($|/)'
           if (-not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe')) { choco install nsis -y --no-progress }
           Push-Location installer
           & 'C:\Program Files (x86)\NSIS\makensis.exe' -V2 "-DVERSION=$version" deskling.nsi
