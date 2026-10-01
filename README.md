@@ -4,7 +4,7 @@
 
 <p align="center">A small pixel-art companion in the corner of your screen that shows what your Claude Code sessions are doing.</p>
 
-<p align="center"><a href="https://github.com/ozanberkpolat/deskling/releases/latest/download/deskling-setup.exe"><b>Download for Windows</b></a> · <a href="https://obp.com.tr/deskling">Website</a></p>
+<p align="center"><a href="https://apps.microsoft.com/detail/9nnsg351d4bq"><b>Get it from the Microsoft Store</b></a> · <a href="https://github.com/ozanberkpolat/deskling/releases/latest/download/deskling-setup.exe">Installer</a> · <a href="https://obp.com.tr/deskling">Website</a></p>
 
 <p align="center"><img src="docs/moods.png" width="820" alt="Ten mascots (shiba, dragon, owl, robot, cat, frog, ghost, alien, rubber duck, cactus) in four moods: idle, working, waiting, finished"></p>
 
@@ -27,9 +27,9 @@ The ring around it tells you the state at a glance:
 
 Two ways to get the same app. Pick one, not both (they would share the hooks and port 8033).
 
-- **Microsoft Store**, as *Deskling: Desk Buddy* (the plain name was taken there). Signed by
-  Microsoft, so it installs with Smart App Control on, and it updates itself. *The listing is in
-  review; the link goes here once it is live.*
+- **[Microsoft Store](https://apps.microsoft.com/detail/9nnsg351d4bq)**, as *Deskling: Desk Buddy*
+  (the plain name was taken there). Signed by Microsoft, so it installs with Smart App Control on,
+  and it updates itself. Recommended.
 - **Installer from GitHub:** [`deskling-setup.exe`](https://github.com/ozanberkpolat/deskling/releases/latest/download/deskling-setup.exe).
   No admin rights needed; it installs for your user only. It is not code-signed yet:
   - Windows SmartScreen asks once: **More info → Run anyway**.
