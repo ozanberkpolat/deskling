@@ -24,7 +24,8 @@ function Hooks() {
 }
 function Ours() { @(Hooks | Where-Object { $_.headers -and $_.headers['X-Deskling-Mark'] -eq 'deskling-v1' }) }
 function Legacy() { @(Hooks | Where-Object { $_.headers -and $_.headers['X-CcDog-Mark'] }) }
-function Theirs() { @(Hooks | Where-Object { $_.command -eq 'echo theirs' }) }
+# counted in the text: a Where-Object over the parsed hooks counted the user's hook twice
+function Theirs() { if (Test-Path $settings) { [regex]::Matches((Get-Content $settings -Raw), '"command"\s*:\s*"echo theirs"') } else { @() } }
 function Running() { [bool](Get-Process deskling -ErrorAction SilentlyContinue) }
 
 $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
@@ -95,8 +96,15 @@ Start-Sleep 8
 Shot '3-first-start-question'
 Check (Running) 'first start with the question on screen: no crash'
 Check ((Ours).Count -eq 0) 'nothing written to settings.json before the user answers'
-$ws = New-Object -ComObject WScript.Shell
-if ($ws.AppActivate('Deskling')) { Start-Sleep 1; $ws.SendKeys('{ENTER}') } else { Write-Host 'could not focus the question window' }
+# Press the button through UI Automation (the widget window is also titled "Deskling", so
+# focusing by title and sending Enter may hit the widget instead). Windows PowerShell has UIA.
+powershell.exe -NoProfile -Command @'
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+$name = [System.Windows.Automation.AutomationElement]::NameProperty
+$cond = New-Object System.Windows.Automation.PropertyCondition($name, 'Watch Claude Code')
+$btn = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+if ($btn) { $btn.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() } else { Write-Host 'button not found' }
+'@
 Check (Until { (Ours).Count -eq 10 } 20) 'answering "Watch Claude Code" adds the hooks'
 Shot '4-after-yes'
 
