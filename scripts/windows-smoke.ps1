@@ -51,7 +51,8 @@ $legacyHook = @{ type = 'http'; url = 'http://127.0.0.1:8033/hook'; headers = @{
   ConvertTo-Json -Depth 10 | Set-Content $settings
 
 # ── 2. install silently; the installer starts the app ──
-Start-Process $Installer -ArgumentList '/S' -Wait
+# -Wait would also wait for deskling.exe, which the installer starts and which never exits
+(Start-Process $Installer -ArgumentList '/S' -PassThru).WaitForExit()
 Check (Until { Running }) 'installer started deskling.exe'
 Check (Until { (Ours).Count -eq 10 } 40) 'migrated localHooks=true: 10 Deskling hooks in settings.json'
 Start-Sleep 3
@@ -100,7 +101,7 @@ Check (Until { (Ours).Count -eq 10 } 20) 'answering "Watch Claude Code" adds the
 Shot '4-after-yes'
 
 # ── 5. uninstall ──
-Start-Process (Join-Path $programs 'Deskling\Uninstall Deskling.exe') -ArgumentList '/S' -Wait
+(Start-Process (Join-Path $programs 'Deskling\Uninstall Deskling.exe') -ArgumentList '/S' -PassThru).WaitForExit()
 Check (Until { -not (Test-Path (Join-Path $programs 'Deskling\deskling.exe')) } 60) 'uninstaller removed the program'
 Check (Until { (Ours).Count -eq 0 } 30) 'uninstaller took the hooks out'
 Check ((Theirs).Count -eq 1) "uninstaller kept the user's hook"
