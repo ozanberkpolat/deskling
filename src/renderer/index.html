@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'">
+<title>Deskling</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-shape="round" data-corner="tr">
+<div id="box" class="box" data-mood="offline">
+  <i class="radar"></i><i class="radar r2"></i>
+  <i class="ring"></i>
+  <div class="face"><canvas id="dog"></canvas></div>
+  <b class="rozet" hidden></b>
+  <canvas id="fx"></canvas>
+  <svg class="quota" viewBox="0 0 126 126" aria-hidden="true" hidden><path class="q-track" pathLength="100"/><path class="q-arc" pathLength="100"/><circle class="q-dot" r="3.2"/></svg>
+</div>
+<div id="pups"></div>
+<div id="peek" hidden></div>
+<div id="list" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "deskling",
+  "version": "1.0.0",
+  "description": "A pixel-art desk companion that shows what your Claude Code sessions are doing",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/main/main.js",
+  "repository": "github:ozanberkpolat/deskling",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "44.5.1"
+  }
+}

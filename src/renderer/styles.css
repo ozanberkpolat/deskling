@@ -1,0 +1,175 @@
+/* Sentinel tokens (DESIGN.md), system fonts only: the renderer loads nothing from the network. */
+:root {
+  --bg: #0a0e14; --panel: #141a24; --panel2: #171e29;
+  --border: rgba(140,160,190,.14); --border-2: rgba(140,160,190,.26);
+  --ink: #eaf0f7; --muted: #8a97a8; --faint: #5b6675;
+  --accent: #ff8a1e; --good: #2fd6a3; --info: #4c8dff; --pc: #b48cff; --bad: #ff6b73; --warn: #ffb454;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --q: rgba(205,214,232,.72);   /* quota arc, calm */
+  --m: 12px;          /* gap between the box and the screen edges */
+  --b: 112px;         /* box size */
+  --gap: 10px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; overflow: hidden; }
+body { position: relative; width: 100vw; height: 100vh; font: 500 12.5px/1.35 var(--font); color: var(--ink); user-select: none; -webkit-user-select: none; }
+
+/* ── the box, in the window corner that faces the screen corner ── */
+.box { position: absolute; width: var(--b); height: var(--b); border-radius: 50%; }
+body[data-shape="square"] .box { border-radius: 24px; }
+#box { cursor: pointer; transition: opacity .6s ease, transform .25s cubic-bezier(.2,.7,.2,1); }
+/* tucked into the side edge: only a 22 px strip shows; out on hover, with the list, or when something needs you */
+body.tucked-in[data-corner$="r"] #box { transform: translateX(calc(var(--b) + var(--m) - 22px)); }
+body.tucked-in[data-corner$="l"] #box { transform: translateX(calc(-1 * (var(--b) + var(--m) - 22px))); }
+body.tucked-in #box { opacity: 1; }
+/* nothing going on: fade back so it doesn't catch the eye; full again on hover or with the list open */
+#box[data-mood="idle"] { opacity: var(--idle-op, .45); }   /* tray → Idle opacity */
+#box[data-mood="idle"]:hover, body.open #box { opacity: 1; transition-duration: .15s; }
+body[data-corner^="t"] #box { top: var(--m); }
+body[data-corner^="b"] #box { bottom: var(--m); }
+body[data-corner$="l"] #box { left: var(--m); }
+body[data-corner$="r"] #box { right: var(--m); }
+
+.box > i { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+/* the ring is one colour: the current mood */
+.ring { background: rgba(140,160,190,.22); box-shadow: 0 8px 24px rgba(0,0,0,.45); transition: background .3s; }
+.box[data-mood="working"] .ring { background: var(--info); }
+.box[data-mood="finished"] .ring { background: var(--good); }
+.box[data-mood="offline"] .ring { background: #3a4250; }
+.box[data-mood="error"] .ring { background: var(--bad); }
+.face {
+  position: absolute; inset: 4px; border-radius: inherit; overflow: hidden;
+  display: flex; align-items: flex-end; justify-content: center;   /* the bust sits on the bottom edge */
+  background: radial-gradient(circle at 50% 30%, #1b2331, #0c1118 75%);
+}
+body[data-shape="square"] .face { border-radius: 20px; }
+.face canvas { image-rendering: pixelated; flex: none; }
+#box:hover .face { background: radial-gradient(circle at 50% 30%, #222c3d, #0e141c 75%); }
+
+/* ── waiting: the radar. Two accent rings grow out of the box and fade, 0.6 s apart. ── */
+.radar { opacity: 0; border: 3px solid var(--accent); }
+.box[data-mood="waiting"] .radar { animation: radar 1.2s cubic-bezier(.2,.6,.3,1) infinite; }
+.box[data-mood="waiting"] .r2 { animation-delay: .6s; }
+.box[data-mood="waiting"] .ring { background: var(--accent); box-shadow: 0 0 0 2px rgba(255,138,30,.35), 0 0 26px rgba(255,138,30,.55), 0 8px 24px rgba(0,0,0,.45); }
+@keyframes radar { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.8); opacity: 0; } }
+
+/* one count: waiting, else finished (Paperclip's older items show in the list, not on the box) */
+.rozet {
+  position: absolute; top: 2px; right: 2px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px;
+  display: grid; place-items: center; font: 800 12px/1 var(--mono); font-variant-numeric: tabular-nums;
+  color: #1a1205; background: var(--accent); box-shadow: 0 0 0 2px var(--bg);
+}
+.rozet.good { background: var(--good); color: #04140e; }
+.rozet.bad { background: var(--bad); color: #2a0606; }
+.rozet[hidden] { display: none; }
+
+/* quota: one thin arc just outside the ring = the 5-hour window, a dot on the same track = the
+   week. Calm grey; amber from 80 %, red from 95 % (the fuller window decides). Dim when stale. */
+.quota { position: absolute; inset: -7px; width: calc(100% + 14px); height: calc(100% + 14px); overflow: visible; pointer-events: none; transition: opacity .3s; }
+.quota[hidden] { display: none; }
+.quota path, .quota circle { fill: none; }
+.q-track { stroke: rgba(205,214,232,.10); stroke-width: 2; }
+.q-arc { stroke: var(--q); stroke-width: 2.2; stroke-linecap: round; transition: stroke-dasharray .6s cubic-bezier(.2,.7,.2,1), stroke .3s; }
+.q-dot { fill: var(--q) !important; stroke: var(--bg); stroke-width: 2; transition: fill .3s; }
+.quota[data-level="warn"] { --q: var(--warn); }
+.quota[data-level="high"] { --q: var(--bad); }
+.quota.stale { opacity: .4; }
+
+/* effects canvas (zzz, "!", sparkles, cloud): outside the box, toward the screen centre */
+#fx, .fxmini { position: absolute; top: -8px; width: 48px; height: 48px; image-rendering: pixelated; pointer-events: none; }
+body[data-corner$="r"] #fx { left: -44px; }
+body[data-corner$="l"] #fx, .fxmini { right: -44px; }
+/* some effects (fire, a hoot, beeps) come out at mouth height and point inward: flipped on right corners */
+#fx[data-anchor="mid"], .fxmini[data-anchor="mid"] { top: 52px; }
+body[data-corner$="r"] #fx[data-mirror] { transform: scaleX(-1); }
+
+/* ── peek and list open toward the middle of the screen ── */
+#peek, #list { position: absolute; }
+#peek { width: 210px; padding: 9px 11px; pointer-events: none;
+  background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--border-2); border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+body[data-corner^="t"] #peek { top: calc(var(--m) + 10px); }
+body[data-corner^="b"] #peek { bottom: calc(var(--m) + 10px); }
+body[data-corner$="r"] #peek { right: calc(var(--m) + var(--b) + var(--gap)); }
+body[data-corner$="l"] #peek { left: calc(var(--m) + var(--b) + var(--gap)); }
+#peek .title { margin-left: 13px; }
+
+#list {
+  width: 356px; max-height: calc(100vh - var(--m) - var(--b) - var(--gap) - 8px); overflow-y: auto; padding: 6px;
+  background: linear-gradient(180deg, var(--panel), var(--panel2));
+  border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  scrollbar-width: thin; scrollbar-color: var(--border-2) transparent;
+}
+body[data-corner^="t"] #list { top: calc(var(--m) + var(--b) + var(--gap)); }
+body[data-corner^="b"] #list { bottom: calc(var(--m) + var(--b) + var(--gap)); }
+body[data-corner$="r"] #list { right: var(--m); }
+body[data-corner$="l"] #list { left: var(--m); }
+#list[hidden], #peek[hidden] { display: none; }
+
+.grp { font: 700 9.5px/1 var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); padding: 8px 8px 4px; }
+.row {
+  display: block; width: 100%; text-align: left; border: 0; background: none; color: inherit; font: inherit;
+  padding: 7px 8px; border-radius: 10px; min-height: 44px;
+}
+button.row { cursor: pointer; }
+button.row:hover, button.row:focus-visible { background: rgba(140,160,190,.08); outline: none; }
+.top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--faint); }
+.g-waiting .dot { background: var(--accent); }
+.g-waiting.k-pc .dot { background: var(--pc); }
+.g-waiting.k-pc.fresh .dot { background: var(--accent); }
+.g-finished .dot { background: var(--good); }
+.g-error .dot { background: var(--bad); }
+.g-error .state { color: var(--bad); }
+.g-working .dot { background: var(--info); }
+.proj { font-weight: 700; white-space: nowrap; }
+.state { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.g-waiting .state { color: var(--accent); }
+.g-waiting.k-pc:not(.fresh) .state { color: var(--pc); }
+.ctx { font: 700 10px/1 var(--mono); color: var(--warn); padding: 2px 5px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,180,84,.35); flex: none; }
+.host { font: 700 9.5px/1 var(--mono); color: var(--muted); padding: 2px 5px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--border-2); flex: none; }
+.ago { font: 600 10.5px/1 var(--mono); color: var(--faint); font-variant-numeric: tabular-nums; flex: none; }
+.title { margin: 2px 0 0 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detail { margin: 1px 0 0 13px; color: var(--muted); font: 500 11px/1.3 var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.more, .empty, .status { color: var(--muted); padding: 8px; font-size: 11.5px; }
+.qline { margin: 6px 0 0 13px; font: 600 10.5px/1.4 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.qline .w { color: var(--warn); } .qline .h { color: var(--bad); }
+.qrow { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; padding: 8px; border-top: 1px solid var(--border); margin-top: 4px; font: 600 11px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.qrow .bar { height: 4px; border-radius: 4px; background: rgba(140,160,190,.14); overflow: hidden; }
+.qrow .bar i { display: block; height: 100%; border-radius: inherit; background: var(--q); }
+.qrow .bar.w i { background: var(--warn); } .qrow .bar.h i { background: var(--bad); }
+.qrow .rs { color: var(--faint); font-weight: 500; }
+.qrow .age { grid-column: 1 / -1; color: var(--faint); font-weight: 500; }
+.status { color: var(--bad); border-top: 1px solid var(--border); margin-top: 4px; }
+
+/* subagent pups: up to three tiny companions in a row under the box (above it in bottom corners) */
+#pups { position: absolute; display: flex; justify-content: center; gap: 6px; width: var(--b); pointer-events: none; }
+body[data-corner^="t"] #pups { top: calc(var(--m) + var(--b) + 4px); }
+body[data-corner^="b"] #pups { bottom: calc(var(--m) + var(--b) + 4px); }
+body[data-corner$="r"] #pups { right: var(--m); }
+body[data-corner$="l"] #pups { left: var(--m); }
+body.tucked-in #pups, body.open #pups { display: none; }
+#pups canvas { width: 28px; height: 24px; image-rendering: pixelated; animation: pup-in .3s cubic-bezier(.2,.9,.3,1.4); }
+#pups canvas.leave { animation: pup-out .6s ease forwards; }
+@keyframes pup-in { from { transform: scale(0); opacity: 0; } }
+@keyframes pup-out { 30% { transform: rotate(-14deg); } 60% { transform: rotate(14deg); } to { transform: translateY(-8px); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  #box, #pups canvas { transition: none; animation: none; }
+  .box[data-mood="waiting"] .radar { animation: none; opacity: .9; transform: scale(1.12); }
+  .box[data-mood="waiting"] .r2 { display: none; }
+}
+
+/* ── gallery (preview.html and --gallery): every mood in a real box, then every clip ── */
+.cmprow { display: flex; align-items: center; gap: 40px; flex-wrap: wrap; }
+.mini { position: relative; margin: 0; width: var(--b); height: calc(var(--b) + 22px); }
+.mini figcaption { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font: 600 11px var(--mono); color: var(--muted); }
+.cliphead { margin: 22px 0 8px; font: 700 10px/1 var(--font); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.clips { display: flex; flex-wrap: wrap; gap: 12px; }
+.clips figure { margin: 0; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; }
+.clips canvas { display: block; image-rendering: pixelated; }
+.clips figcaption { margin-top: 6px; font: 600 11px var(--mono); color: var(--muted); }
+.mpick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.mbtn { font: 600 12.5px var(--font); color: var(--ink); background: var(--panel); border: 1px solid var(--border-2); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.mbtn.on { background: var(--accent); color: #1a1205; border-color: var(--accent); }

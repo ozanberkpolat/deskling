@@ -1,0 +1,64 @@
+name: Test and release
+
+# Every push and pull request runs the tests. A tag like v1.2.3 also builds deskling-setup.exe on a
+# Windows runner and attaches it to a GitHub release under that fixed name, so
+# releases/latest/download/deskling-setup.exe always points at the newest one.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:      # a trial Windows build: the installer becomes a workflow artifact, no release
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1     # the tests never start Electron
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Package
+        shell: pwsh
+        run: |
+          $version = if ('${{ github.ref_name }}' -like 'v*') { '${{ github.ref_name }}'.TrimStart('v') } else { (node -p "require('./package.json').version") }
+          node scripts/make-icon.mjs
+          npx @electron/packager . deskling --platform=win32 --arch=x64 --asar --out=dist --overwrite `
+            --app-version=$version --icon=build/icon.ico `
+            --ignore='^/(fixtures|test|scripts|dist|build|docs|installer|preview\.html|\.github)($|/)'
+          if (-not (Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe')) { choco install nsis -y --no-progress }
+          Push-Location installer
+          & 'C:\Program Files (x86)\NSIS\makensis.exe' -V2 "-DVERSION=$version" deskling.nsi
+          $code = $LASTEXITCODE
+          Pop-Location
+          if ($code) { exit $code }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deskling-setup
+          path: dist/deskling-setup.exe
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create '${{ github.ref_name }}' dist/deskling-setup.exe --title "Deskling ${{ github.ref_name }}" --generate-notes

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deskling preview</title>
+<link rel="stylesheet" href="src/renderer/styles.css">
+<style>
+  /* preview chrome only; the widget itself is exactly src/renderer */
+  html, body { overflow: auto; }
+  body { width: auto; height: auto; margin: 0; background: #0a0e14; color: var(--ink); user-select: text; -webkit-user-select: text; }
+  .screen { position: relative; height: 640px; background: radial-gradient(1200px 400px at 50% -100px, #22324a, #101722 60%, #0b1018); border-bottom: 1px solid var(--border); overflow: hidden; }
+  .screen::before { content: ""; position: absolute; top: 4px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #05070a; box-shadow: 0 0 0 2px #1a222e; z-index: 2; }
+  .screen.light { background: radial-gradient(1200px 400px at 50% -100px, #f3f6fa, #dfe5ec 60%, #cfd7e1); }
+  /* #widget = the Electron window: it hugs the chosen screen corner, 340x200 closed, 380x560 open */
+  #widget { position: absolute; width: 340px; height: 200px; }
+  .screen.open #widget { width: 380px; height: 560px; }
+  .screen[data-c^="t"] #widget { top: 0; } .screen[data-c^="b"] #widget { bottom: 0; }
+  .screen[data-c$="l"] #widget { left: 0; } .screen[data-c$="r"] #widget { right: 0; }
+  .screen.bounds #widget { outline: 1px dashed rgba(255,255,255,.25); }
+  .ctl { padding: 16px; display: grid; gap: 14px; max-width: 1100px; margin: 0 auto; }
+  .ctl h2 { margin: 6px 0 0; font: 700 10px/1 var(--font); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .bar button, .bar select { font: 600 12px var(--font); color: var(--ink); background: var(--panel); border: 1px solid var(--border-2); border-radius: 999px; padding: 7px 12px; cursor: pointer; }
+  .bar button:hover { border-color: var(--accent); }
+  .bar .on { background: var(--accent); color: #1a1205; border-color: var(--accent); }
+  .log { font: 500 11px/1.5 var(--mono); color: var(--muted); max-height: 120px; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; white-space: pre-wrap; }
+  progress { width: 220px; accent-color: var(--accent); }
+  .note { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="screen" id="screen">
+  <div id="widget">
+    <div id="box" class="box" data-mood="offline">
+      <i class="radar"></i><i class="radar r2"></i>
+      <i class="ring"></i>
+      <div class="face"><canvas id="dog"></canvas></div>
+      <b class="rozet" hidden></b>
+      <canvas id="fx"></canvas>
+      <svg class="quota" viewBox="0 0 126 126" aria-hidden="true" hidden><path class="q-track" pathLength="100"/><path class="q-arc" pathLength="100"/><circle class="q-dot" r="3.2"/></svg>
+    </div>
+    <div id="pups"></div>
+    <div id="peek" hidden></div>
+    <div id="list" hidden></div>
+  </div>
+</div>
+
+<div class="ctl">
+  <p class="note">The dark area is the laptop screen. The widget is the real renderer fed by the real reducer. Hover the box for the peek, click it for the list, Ctrl+Alt+D toggles the list. On the laptop you drag the box and it snaps to the nearest corner; here use the corner buttons. The first sound needs one click on the page (browser autoplay rule; Electron has no such rule).</p>
+
+  <h2>Look</h2>
+  <div class="bar" id="look">
+    <span class="note">mascot</span>
+    <button data-mascot="shiba">Shiba</button><button data-mascot="dragon">Dragon</button><button data-mascot="owl">Owl</button><button data-mascot="robot">Robot</button>
+    <span class="note">shape</span>
+    <button data-shape="round">Round</button><button data-shape="square">Square</button>
+    <span class="note">corner</span>
+    <button data-corner="tl">↖ TL</button><button data-corner="tr">↗ TR</button><button data-corner="bl">↙ BL</button><button data-corner="br">↘ BR</button>
+    <button id="bounds">Window bounds</button>
+  </div>
+
+  <h2>Every mood, every clip (pick a mascot)</h2>
+  <div class="gallery" id="gallery"></div>
+
+  <h2>Scenarios</h2>
+  <div class="bar" id="scen"></div>
+
+  <h2>Recorded relay stream</h2>
+  <div class="bar">
+    <select id="fixture"></select>
+    <button data-speed="1">1x</button><button data-speed="10">10x</button><button data-speed="60">60x</button>
+    <button id="stop">Stop</button>
+    <progress id="prog" value="0" max="1"></progress><span id="pos" class="note"></span>
+  </div>
+
+  <h2>Display</h2>
+  <div class="bar">
+    <button id="bg">Light wallpaper</button>
+    <label class="note"><input type="checkbox" id="snd" checked> sound</label>
+  </div>
+
+  <h2>Events</h2>
+  <div class="log" id="log"></div>
+
+</div>
+
+<script type="module">
+// Mock preload bridge: the same surface preload.cjs exposes, driven by the real reducer.
+import { initialState, reduce } from './src/shared/reducer.js'
+import { viewmodel } from './src/shared/viewmodel.js'
+
+const L = { view: [], fx: [], config: [], toggle: [] }
+let st = initialState()
+const log = msg => { const el = document.getElementById('log'); el.textContent = `${new Date().toLocaleTimeString()}  ${msg}\n` + el.textContent }
+
+// Preview clock: "+5 min" / "+30 min" move it forward for good (a one-off future tick would leave
+// lastChirp in the future and swallow the next real chirps).
+let skew = 0
+function dispatch(action) {
+  const r = reduce(st, { now: Date.now() + skew, ...action })
+  st = r.state
+  const vm = viewmodel(st, Date.now() + skew)
+  L.view.forEach(f => f(vm))                       // view first, then fx (same order as main)
+  for (const e of r.effects) { log(`fx: ${e.fx}`); L.fx.forEach(f => f(e)) }
+  return vm
+}
+
+window.deskling = {
+  onView: f => L.view.push(f),
+  onFx: f => L.fx.push(f),
+  onConfig: f => { L.config.push(f); f(cfg) },
+  onToggleList: f => L.toggle.push(f),
+  setListOpen: open => {
+    log(`list ${open ? 'opened' : 'closed'}`)
+    document.getElementById('screen').classList.toggle('open', open)
+    if (open) dispatch({ type: 'listOpened' })
+  },
+  ack: () => { log('petted: everything marked seen'); dispatch({ type: 'listOpened' }) },
+  openSession: id => log(`openSession → https://portal.example.com/cc/#t=${encodeURIComponent(st.sessions[id]?.tmux || '?')}`),
+  setInteractive: () => {},
+  openUrl: url => window.open(url, '_blank', 'noopener'),
+}
+let cfg = { sound: { enabled: true, volume: 0.6 }, shape: 'round', corner: 'tr', mascot: 'shiba', tucked: false, muted: false }
+window.preview = { dispatch, log, cfg: () => cfg, pet: () => { window.dispatchEvent(new CustomEvent('cc-pet')); window.deskling.ack() }, reset: () => { st = initialState(); skew = 0 }, get state() { return st },
+  advance: ms => { skew += ms; dispatch({ type: 'tick' }) }, now: () => Date.now() + skew,
+  setConfig: c => { cfg = { ...cfg, ...c }; document.getElementById('screen').dataset.c = cfg.corner; L.config.forEach(f => f(cfg)) } }
+document.getElementById('screen').dataset.c = cfg.corner
+addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') L.toggle.forEach(f => f()) })
+setInterval(() => dispatch({ type: 'tick' }), 15_000)
+</script>
+<script type="module" src="src/renderer/app.js"></script>
+<script type="module">
+import { mountGallery } from './src/renderer/gallery.js'
+const { dispatch, setConfig, log } = window.preview
+const gallery = mountGallery(document.getElementById('gallery'))
+
+// ── synthetic scenarios (through the real reducer) ──
+const now = () => window.preview.now() / 1000
+const S = (id, project, title, state, last, ctx = 30) => ({ id, project, tmux: `${id}-${project}`, title, state, since: now(), last, agentsActive: state === 'working' ? 1 : 0, ctx })
+const base = [
+  S('1', 'my-app', 'login fix', 'working', 'Bash: npm test'),
+  S('2', 'api', 'add rate limits', 'done', 'finished in 51s'),
+  S('3', 'docs', 'docs site', 'done', 'finished in 1352s'),
+]
+const pcItem = (k, title, why, hoursAgo = 0) => ({ key: k, company: 'Acme', kind: 'approval', id: `ACME-${k}`, title, severity: 'high', whyNow: why, at: new Date(window.preview.now() - 3.6e6 * hoursAgo).toISOString(), url: 'https://paperclip.obp.com.tr/' })
+let pcs = []
+// A fresh quota reading as the relay would send it, then (optionally) the preview clock moved on, which
+// is how a reading goes stale or a window rolls over (an OLDER reading would rightly be ignored).
+const quota = (five, week, laterS = 0, fiveResetS = 3 * 3600) => {
+  dispatch({ type: 'quota', data: { five: { pct: five, resetsAt: now() + fiveResetS }, week: { pct: week, resetsAt: now() + 3 * 86400 }, at: now(), source: 'vps' } })
+  if (laterS) window.preview.advance(laterS * 1000)
+}
+const one = (state, last, ctx) => dispatch({ type: 'session', data: S('1', 'my-app', 'login fix', state, last, ctx) })
+// [label, what you should see, action]. Each runs through the real reducer, like relay events would.
+const scen = [
+  ['Launch', 'fresh start: 1 working (blue), 2 done long ago, 2 old Paperclip items (purple). No bark: old news is seeded quietly.', () => {
+    window.preview.reset()
+    pcs = [pcItem('p2', 'Monthly cost report review', 'Waiting for your review', 2), pcItem('p5', 'Approve NSG change', 'Approval requested', 5)]
+    dispatch({ type: 'snapshot', data: { sessions: base, paperclip: { items: pcs, stale: false }, status: { cc: 'ok', paperclip: 'ok' } } })
+  }],
+  ['All quiet', 'every session idle and the list seen: the dog curls up and sleeps (zzz). Only the purple Paperclip count stays.', () => {
+    for (const s of base) dispatch({ type: 'session', data: { ...s, state: 'idle', since: now() } })
+    dispatch({ type: 'listOpened' })
+  }],
+  ['Start working', 'one session works: the dog types on its laptop, blue 1.', () => one('working', 'Edit: dog.js')],
+  ['3 working', 'three sessions work: blue 3, the dog types faster.', () => base.forEach(s => dispatch({ type: 'session', data: { ...s, state: 'working', since: now() } }))],
+  ['Asks permission', 'a session needs approval: radar rings, orange ring, orange 1, the dog sits up and barks once.', () => one('blocked', 'Bash: docker compose up -d portal')],
+  ['+5 min still waiting', 'nothing answered for 5 minutes: one more bark (only while something waits; once per wait).', () => window.preview.advance(5 * 60_000 + 15_000)],
+  ['Answered', 'approval given: radar stops, back to typing.', () => one('working', 'Bash: docker compose up -d portal')],
+  ['Turn finishes', 'the turn ends: the dog jumps with sparkles, then wags; green 1 until you open the list (or 30 min pass).', () => one('done', 'finished in 212s')],
+  ['+30 min', 'an unseen finish older than 30 min fades: green goes away by itself.', () => window.preview.advance(30 * 60_000 + 15_000)],
+  ['Context 85%', 'a session passes 80% context: the dog yawns once; its row shows ctx 85%. Fires again only after it drops under 60%.', () => one('working', 'Read: PLAN.md', 85)],
+  ['Context back to 20%', 're-arms the yawn (as after /compact).', () => one('working', 'Read: PLAN.md', 20)],
+  ['New Paperclip item', 'a new Paperclip item: bark, radar, orange 1 until you open the list; then it only counts in purple.', () => {
+    pcs = [...pcs, pcItem(`n${Date.now()}`, 'Memory distill review', 'New proposal from memory-distill')]
+    dispatch({ type: 'paperclip', data: { items: pcs, stale: false } })
+  }],
+  ['Quota 62 / 18', 'quota: a calm grey arc 62% of the way round, a dot at 18% for the week. Hover for the reset times.', () => quota(62, 18)],
+  ['Quota 85 / 40', 'past 80%: the arc and the dot turn amber.', () => quota(85, 40)],
+  ['Quota 97 / 88', 'past 95%: red. Still no sound or animation.', () => quota(97, 88)],
+  ['Quota stale', 'no reading for 2 hours (no chat open anywhere): the arc dims, the peek says how old it is.', () => quota(40, 22, 2 * 3600 + 60, 6 * 3600)],
+  ['Window rolled over', 'the 5-hour window\'s reset time has passed: the arc reads 0 until a new reading comes in.', () => quota(91, 30, 5 * 60, 60)],
+  ['Session error', 'a turn stopped on an API error: red ring, the oops pose, a ✕ bubble, a red count. No sound. Hold the box (or open the list) to mark it seen.', () => one('error', 'rate_limit_error: limit reached')],
+  ['3 subagents', 'the session runs 3 subagents: three tiny pups beside the box. "Answered" sends them off (they wave and go).', () => dispatch({ type: 'session', data: { ...S('1', 'my-app', 'login fix', 'working', 'Agent: research'), agentsActive: 3 } })],
+  ['Pet', 'same as holding the box for half a second: hearts, a happy wiggle, and finished / errors / new Paperclip items count as seen.', () => window.preview.pet()],
+  ['Tuck on/off', 'tucked into the side edge: only a strip shows; it slides out on hover, with the list, or when something needs you.', () => setConfig({ tucked: !window.preview.cfg().tucked })],
+  ['Relay drops', 'the relay is gone: grey dog with a cloud.', () => dispatch({ type: 'disconnected' })],
+  ['Relay back', 'reconnected: whatever changed meanwhile is diffed (no bark for things you already knew).', () =>
+    dispatch({ type: 'snapshot', data: { sessions: Object.values(window.preview.state.sessions), paperclip: { items: pcs, stale: false }, status: { cc: 'ok', paperclip: 'ok' } } })],
+]
+const bar = document.getElementById('scen')
+for (const [label, expect, fn] of scen) {
+  const b = document.createElement('button'); b.textContent = label; b.title = expect
+  b.onclick = () => { log(`${label}: ${expect}`); fn() }
+  bar.append(b)
+}
+
+// ── recorded fixture replay ──
+const sel = document.getElementById('fixture')
+let replay = null
+try {
+  const html = await (await fetch('fixtures/')).text()
+  for (const [, f] of html.matchAll(/href="(stream-[^"]+\.jsonl)"/g)) sel.append(new Option(f, f))
+} catch {}
+if (!sel.options.length) sel.append(new Option('no fixture found', ''))
+async function play(speed) {
+  stopReplay()
+  if (!sel.value) return
+  const lines = (await (await fetch(`fixtures/${sel.value}`)).text()).trim().split('\n').map(l => JSON.parse(l))
+  window.preview.reset()                              // a fresh reducer, like a fresh launch
+  const total = lines.at(-1).t || 1
+  const t0 = performance.now()
+  let i = 0
+  replay = setInterval(() => {
+    const t = (performance.now() - t0) * speed
+    while (i < lines.length && lines[i].t <= t) { const l = lines[i++]; dispatch({ type: l.event, data: l.data }) }
+    document.getElementById('prog').value = Math.min(1, t / total)
+    document.getElementById('pos').textContent = `${Math.round(t / 1000)}s / ${Math.round(total / 1000)}s · ${i}/${lines.length} events`
+    if (i >= lines.length) stopReplay()
+  }, 100)
+}
+function stopReplay() { clearInterval(replay); replay = null }
+document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => play(Number(b.dataset.speed)))
+document.getElementById('stop').onclick = stopReplay
+
+document.getElementById('bg').onclick = e => { const l = document.getElementById('screen').classList.toggle('light'); e.target.classList.toggle('on', l) }
+document.getElementById('snd').onchange = e => setConfig({ sound: { enabled: e.target.checked, volume: 0.6 } })
+const look = () => document.querySelectorAll('#look button[data-shape], #look button[data-corner], #look button[data-mascot]').forEach(b =>
+  b.classList.toggle('on', b.dataset.shape === document.body.dataset.shape || b.dataset.corner === document.body.dataset.corner || b.dataset.mascot === document.body.dataset.mascot))
+document.querySelectorAll('#look [data-mascot]').forEach(b => b.onclick = () => { setConfig({ mascot: b.dataset.mascot }); gallery.show(b.dataset.mascot); look() })
+document.querySelectorAll('#look [data-shape]').forEach(b => b.onclick = () => { setConfig({ shape: b.dataset.shape }); look() })
+document.querySelectorAll('#look [data-corner]').forEach(b => b.onclick = () => { setConfig({ corner: b.dataset.corner }); look() })
+document.getElementById('bounds').onclick = e => e.target.classList.toggle('on', document.getElementById('screen').classList.toggle('bounds'))
+look()
+
+scen[0][2]()
+</script>
+</body>
+</html>
