@@ -58,6 +58,18 @@ jobs:
         with:
           name: deskling-setup
           path: dist/deskling-setup.exe
+      - name: Microsoft Store package (unsigned; the Store signs it)
+        shell: pwsh
+        run: |
+          $env:DESKLING_VERSION = if ('${{ github.ref_name }}' -like 'v*') { '${{ github.ref_name }}'.TrimStart('v') } else { '' }
+          node scripts/make-msix.mjs
+          $sdk = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64' -Directory | Sort-Object Name | Select-Object -Last 1
+          & (Join-Path $sdk.FullName 'makeappx.exe') pack /d dist\msix /p dist\deskling.msix /o
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deskling-msix
+          path: dist/deskling.msix
 
   smoke:
     needs: build
@@ -77,9 +89,27 @@ jobs:
           name: smoke-results
           path: smoke/
 
+  smoke-msix:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: deskling-msix
+      - name: Install the Store package, first start, hooks, uninstall
+        shell: pwsh
+        run: ./scripts/windows-smoke-msix.ps1 -Package ./deskling.msix -Publisher 'CN=CE54EF76-5C7E-4E9A-99C3-9CD72C74D9E7' -Out smoke-msix
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-msix-results
+          path: smoke-msix/
+
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: smoke
+    needs: [smoke, smoke-msix]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

@@ -57,7 +57,9 @@ export function createTray({ config, widget, log, statusText, onQuit }) {
       { label: 'Watch Claude Code on this PC', type: 'checkbox', checked: c.localHooks === true, click: i => config.set({ localHooks: i.checked }) },
       { label: 'Hide in full screen (video, slides)', type: 'checkbox', checked: c.hideInFullscreen, click: i => config.set({ hideInFullscreen: i.checked }) },
       { label: 'Hide from screen capture', type: 'checkbox', checked: c.hideFromCapture, click: i => config.set({ hideFromCapture: i.checked }) },
-      { label: 'Start at login', type: 'checkbox', checked: c.autostart, enabled: app.isPackaged, click: i => config.set({ autostart: i.checked }) },
+      process.windowsStore
+        ? { label: 'Start at login: Windows Settings › Apps › Startup', enabled: false }
+        : { label: 'Start at login', type: 'checkbox', checked: c.autostart, enabled: app.isPackaged, click: i => config.set({ autostart: i.checked }) },
       { type: 'separator' },
       { label: 'Open config', click: () => shell.openPath(config.file) },
       { label: 'Open log', click: () => shell.openPath(log.file) },

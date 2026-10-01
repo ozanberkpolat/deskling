@@ -35,7 +35,10 @@ if (arg('remove-hooks')) {
   try { removeHooks(CLAUDE_SETTINGS) } catch {}          // a broken settings.json is left untouched
   process.exit(0)                                         // now: nothing below may run (no migration, no config)
 } else if (!app.requestSingleInstanceLock()) app.exit(0)
-app.setAppUserModelId('deskling')
+// The Microsoft Store build (MSIX) has a package identity: Windows gives it the AppUserModelId,
+// the toast registration and the start-at-login task (manifest). Only the installer build sets them up itself.
+const STORE = process.windowsStore === true
+if (!STORE) app.setAppUserModelId('deskling')
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true } }])
 
 const dir = app.getPath('userData')                    // %APPDATA%\deskling
@@ -139,7 +142,7 @@ function applyFullscreen(c) {
 }
 
 function applyAutostart(c) {
-  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: c.autostart })
+  if (app.isPackaged && !STORE) app.setLoginItemSettings({ openAtLogin: c.autostart })
 }
 
 // a VPS session's terminal in the CC app (laptop sessions have no tmux: their terminal is right here)
@@ -266,7 +269,7 @@ function start() {
   // quiet hours start and end on the clock: re-send the mute when that flips
   let wasQuiet = quiet()
   setInterval(() => { if (quiet() !== wasQuiet) { wasQuiet = quiet(); widget.send('config', rendererConfig(config.get())) } }, 30_000)
-  ensureShortcut({ app, shell, log })
+  if (!STORE) ensureShortcut({ app, shell, log })
 
   applyAutostart(config.get())
   applyHotkey(config.get())
