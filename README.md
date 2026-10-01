@@ -25,13 +25,21 @@ The ring around it tells you the state at a glance:
 
 ## Install
 
-1. Download [`deskling-setup.exe`](https://github.com/ozanberkpolat/deskling/releases/latest/download/deskling-setup.exe)
-   and run it. No admin rights needed; it installs for your user only.
-2. The installer is not code-signed yet, so Windows SmartScreen asks once: **More info → Run anyway**.
-3. On first start Deskling asks whether to watch Claude Code on this PC (see below). Say yes.
+Two ways to get the same app. Pick one, not both (they would share the hooks and port 8033).
 
-Claude Code sessions you start from then on show up. Sessions that were already open usually pick
-the change up too.
+- **Microsoft Store**, as *Deskling Desk Buddy* (the plain name was taken there). Signed by
+  Microsoft, so it installs with Smart App Control on, and it updates itself. *The listing is in
+  review; the link goes here once it is live.*
+- **Installer from GitHub:** [`deskling-setup.exe`](https://github.com/ozanberkpolat/deskling/releases/latest/download/deskling-setup.exe).
+  No admin rights needed; it installs for your user only. It is not code-signed yet:
+  - Windows SmartScreen asks once: **More info → Run anyway**.
+  - **Smart App Control** (Windows 11) blocks unsigned installers outright, with no per-app
+    exception. If it is on, use the Store version, or turn it off in Windows Security → App &
+    browser control → Smart App Control.
+
+On first start Deskling asks whether to watch Claude Code on this PC (see below). Say yes. Claude
+Code sessions you start from then on show up; sessions that were already open usually pick the
+change up too.
 
 Windows 10 and 11. A macOS version is planned.
 
@@ -64,7 +72,8 @@ When you say yes on first start it:
   token that lives in `%APPDATA%\deskling\hook-token`. It answers at once and never holds Claude Code up.
 
 To stop watching, untick **Watch Claude Code on this PC** in the tray menu: the hooks come out again.
-Uninstalling (Settings → Apps) takes them out too. Settings and the log stay in `%APPDATA%\deskling`
+Uninstalling the GitHub installer version (Settings → Apps) takes them out too; the Store version
+cannot run anything while it is removed, so untick that switch before uninstalling it. Settings and the log stay in `%APPDATA%\deskling`
 until you delete that folder.
 
 ## Privacy
@@ -132,6 +141,10 @@ How it is put together:
 Deskling can also follow sessions on another machine through a small relay service that you run
 yourself (`relayUrl` and `token` in the config). That part is undocumented for now; open an issue if
 you want it.
+
+## Privacy policy
+
+[obp.com.tr/deskling/privacy](https://obp.com.tr/deskling/privacy) (the same as the Privacy section above, in full).
 
 ## License
 

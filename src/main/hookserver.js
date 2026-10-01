@@ -19,7 +19,10 @@ export function startHookServer({ port, token, onHook, log }) {
     req.on('data', c => { size += c.length; if (size > MAX_BODY) req.destroy(); else chunks.push(c) })
     req.on('end', () => {
       reply(res, 200)
-      try { onHook(JSON.parse(Buffer.concat(chunks).toString('utf8'))) } catch (e) { log(`hook: bad payload (${e.message})`) }
+      // the parse error would quote the payload (prompt text): log only its size
+      let payload
+      try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { return log(`hook: payload is not valid JSON (${size} bytes)`) }
+      try { onHook(payload) } catch (e) { log(`hook: ${e.message}`) }
     })
   })
   srv.on('error', e => log(`hook receiver on 127.0.0.1:${port}: ${e.message}`))
