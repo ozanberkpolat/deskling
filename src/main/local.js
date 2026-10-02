@@ -133,7 +133,7 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
   const needsPid = id => { const r = S.get(id); return !!r && !r.pid && r.pidTries < 3 }
   function setPid(id, pid) {
     const r = S.get(id)
-    if (!r) return
+    if (!r || pid === undefined) return                     // the helper did not answer: not a try
     r.pidTries++
     if (!pid || r.pid === pid) return
     r.pid = pid

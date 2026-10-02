@@ -36,7 +36,7 @@ test('winhelper: pid and focus go through the helper; a silent helper times out 
     spawnFn: fakeSpawn(r => r.cmd === 'pid' ? (r.port === 5555 ? { pid: 1234 } : null) : { ok: true, how: 'window' }) })
   assert.equal(await w.pid(5555, 8033), 1234)
   assert.deepEqual(await w.focus({ pid: 1234, folder: 'my-app' }), { id: 2, ok: true, how: 'window' })
-  assert.equal(await w.pid(6666, 8033, 50), null)                 // no answer: null after the cap
+  assert.equal(await w.pid(6666, 8033, 50), undefined)            // no answer after the cap: undefined (not a try)
   w.stop()
   const off = createWinHelper({ log: () => {}, platform: 'linux' })
   assert.equal(await off.pid(1, 2), null)
@@ -60,6 +60,8 @@ test('local + viewmodel: a row opens its terminal once the process is known', ()
   const l2 = createLocal({ onSession: () => {}, onGone: () => {} })
   for (let i = 0; i < 3; i++) l2.setPid('nope', null)              // unknown session: ignored
   l2.hook({ session_id: 's2', cwd: '/x', hook_event_name: 'SessionStart' })
+  for (let i = 0; i < 5; i++) l2.setPid('s2', undefined)             // helper still starting: does not use up the tries
+  assert.equal(l2.needsPid('s2'), true)
   l2.setPid('s2', null); l2.setPid('s2', null); l2.setPid('s2', null)
   assert.equal(l2.needsPid('s2'), false, 'gives up after three tries')
 })

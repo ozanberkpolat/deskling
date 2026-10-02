@@ -46,11 +46,12 @@ function Sender($folder, $title, $term = '') {
   $h = "@{ 'X-Deskling-Token' = '$tok'$(if ($term) { "; 'X-Term' = '$term'" }) }"
   $script = @"
 `$Host.UI.RawUI.WindowTitle = '$title'
-foreach (`$e in 'SessionStart', 'UserPromptSubmit') {
+# then a tool call every 5 s, like a working session (an early pid lookup may come before Deskling's helper is ready)
+foreach (`$e in @('SessionStart', 'UserPromptSubmit') + @('PreToolUse') * 60) {
   Invoke-WebRequest -Uri 'http://127.0.0.1:8033/hook' -Method Post -Headers $h -ContentType 'application/json' -UseBasicParsing ``
-    -Body ('{"session_id":"$folder","cwd":"C:\\work\\$folder","hook_event_name":"' + `$e + '","prompt":"jump test"}') | Out-Null
+    -Body ('{"session_id":"$folder","cwd":"C:\\work\\$folder","hook_event_name":"' + `$e + '","prompt":"jump test","tool_name":"Bash","tool_input":{"command":"ls"}}') | Out-Null
+  if (`$e -eq 'PreToolUse') { Start-Sleep 5 }
 }
-Start-Sleep 300
 "@
   [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
 }
@@ -61,7 +62,7 @@ function Helper() { (Select-String -Path $log -Pattern 'terminal brought forward
 # ── Windows Terminal: the target tab first, then a decoy tab that becomes the active one ──
 $enc = Sender 'wtjump' 'deskling-jump-wt'
 Start-Process $Wt -ArgumentList "-w deskling-test new-tab --title deskling-jump-wt powershell -NoProfile -EncodedCommand $enc ; new-tab --title decoy powershell -NoExit -Command `$Host.UI.RawUI.WindowTitle='decoy'"
-Start-Sleep 10
+Start-Sleep 16
 Shot '1-wt-before'
 Write-Host "wt row: $(ClickRow 'wtjump')"
 Start-Sleep 3

@@ -41,7 +41,7 @@ Check (Until { Get-Process deskling -ErrorAction SilentlyContinue }) 'Deskling i
 Check (Until { (DistroSettings) -match 'deskling-wsl v1' } 90) "hooks added inside $Distro"
 $set = (DistroSettings) | ConvertFrom-Json -AsHashtable
 $cmd = @{}
-foreach ($ev in 'SessionStart', 'UserPromptSubmit', 'PermissionRequest') {
+foreach ($ev in 'SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PermissionRequest') {
   $cmd[$ev] = @($set.hooks[$ev] | ForEach-Object { $_.hooks } | Where-Object { $_.command -match 'deskling-wsl v1' })[0].command
   Write-Host "$ev hook: $($cmd[$ev] -replace 'Token: \w+', 'Token: ***')"
   Put "/tmp/ev-$ev.sh" $cmd[$ev]
@@ -53,16 +53,17 @@ Check ((Get-Content $log -Raw) -match "WSL ${Distro}: Deskling hooks added") 'lo
 function Payload($sid, $ev, $extra = '') { "{""session_id"":""$sid"",""cwd"":""/home/u/$sid"",""hook_event_name"":""$ev""$extra}" }
 Put '/tmp/p-SessionStart.json' (Payload 'wsljump' 'SessionStart')
 Put '/tmp/p-UserPromptSubmit.json' (Payload 'wsljump' 'UserPromptSubmit' ',"prompt":"wsl test"')
-Put '/tmp/p-PermissionRequest.json' (Payload 'wsljump' 'PermissionRequest' ',"tool_name":"Bash","tool_input":{"command":"apt list --installed"}')
+Put '/tmp/p-PreToolUse.json' (Payload 'wsljump' 'PreToolUse' ',"tool_name":"Bash","tool_input":{"command":"ls"}')
+Put '/tmp/p-PermissionRequest.json' (Payload 'wslask' 'PermissionRequest' ',"tool_name":"Bash","tool_input":{"command":"apt list --installed"}')
 
 # ── 2. a WSL session in its own console window, titled so the jump can be checked ──
 Put '/tmp/send.sh' @'
 printf '\033]0;deskling-jump-wsl\007'
 for ev in SessionStart UserPromptSubmit; do sh /tmp/ev-$ev.sh < /tmp/p-$ev.json; echo; done
-sleep 300
+for i in $(seq 60); do sleep 5; sh /tmp/ev-PreToolUse.sh < /tmp/p-PreToolUse.json; echo; done
 '@
 $console = Start-Process wsl.exe -ArgumentList '-d', $Distro, '-e', 'sh', '/tmp/send.sh' -PassThru
-Start-Sleep 8
+Start-Sleep 16                                                # a few tool calls, like a working session
 OpenList
 Shot '1-wsl-session'
 $row = Press '*wsljump*'
