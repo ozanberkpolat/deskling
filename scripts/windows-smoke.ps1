@@ -126,6 +126,19 @@ for ($i = 0; $i -lt 8; $i++) {
 Write-Host "allow button: $pressed"
 $answer = Receive-Job $job -Wait -AutoRemoveJob
 Check ($answer -match '"behavior":"allow"') 'Allow in the list answers the held prompt with allow'
+# WASD: A alone answers nothing (no highlight yet); S then A allows the highlighted question
+$job = Ask 'perm3'
+Start-Sleep 3
+$ws = New-Object -ComObject WScript.Shell
+$ws.SendKeys('{ESC}'); Start-Sleep 1                          # the list may still be open from 3b
+$ws.SendKeys('^%d'); Start-Sleep 2                            # open the list
+$ws.SendKeys('a'); Start-Sleep 2
+Check ($job.State -eq 'Running') 'WASD: a stray A (no W/S first) answers nothing'
+$ws.SendKeys('s'); Start-Sleep 1; $ws.SendKeys('a')
+$answer = Receive-Job $job -Wait -AutoRemoveJob
+Check ($answer -match '"behavior":"allow"') 'WASD: S then A allows the highlighted question'
+$ws.SendKeys('{ESC}')
+
 $job = Ask 'perm2'                                            # nobody answers this one
 $answer = Receive-Job $job -Wait -AutoRemoveJob
 Check ($answer -eq '{}') 'an unanswered prompt gets {} after the hold (never an automatic allow)'
@@ -167,6 +180,10 @@ Shot '2c-after-jump'
 $fg = FgTitle
 Write-Host "foreground window: $fg"
 Check ($fg -like '*deskling-jump-target*') 'clicking the row brings that session''s console window to the front'
+Add-Type -Namespace Smoke -Name Cls -MemberDefinition '[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, System.Text.StringBuilder b, int n);'
+$cb = New-Object System.Text.StringBuilder 256; [void][Smoke.Cls]::GetClassName([Smoke.Fg]::GetForegroundWindow(), $cb, 256)
+Write-Host "foreground class: $($cb.ToString()); helper: $((Select-String -Path (Join-Path $appdata 'deskling.log') -Pattern 'terminal brought forward' | Select-Object -Last 1).Line)"
+
 Stop-Process -Id $fakeProc.Id -Force -ErrorAction SilentlyContinue
 
 # ── 4. a brand-new user: the first-start question, before anything is written ──

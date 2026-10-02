@@ -116,9 +116,64 @@ jobs:
           name: smoke-msix-results
           path: smoke-msix/
 
+  smoke-terminals:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: deskling-setup
+      - name: Windows Terminal and VS Code (portable zips)
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest https://github.com/microsoft/terminal/releases/download/v1.24.11911.0/Microsoft.WindowsTerminal_1.24.11911.0_x64.zip -OutFile wt.zip
+          Expand-Archive wt.zip C:\wt
+          $wt = (Get-ChildItem C:\wt -Recurse -Filter WindowsTerminal.exe | Select-Object -First 1).FullName
+          New-Item -ItemType File (Join-Path (Split-Path $wt) '.portable') | Out-Null
+          Invoke-WebRequest 'https://update.code.visualstudio.com/latest/win32-x64-archive/stable' -OutFile vsc.zip
+          Expand-Archive vsc.zip C:\vsc
+          New-Item -ItemType Directory C:\vsc\data | Out-Null
+          "WT=$wt" >> $env:GITHUB_ENV
+      - name: Jump to a Windows Terminal tab and a VS Code window
+        shell: pwsh
+        run: ./scripts/windows-smoke-terminals.ps1 -Installer ./deskling-setup.exe -Wt $env:WT -Code C:\vsc\Code.exe -Out smoke-terminals
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-terminals-results
+          path: smoke-terminals/
+
+  smoke-wsl:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: deskling-setup
+      - uses: Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364   # v7.0.0
+        with:
+          distribution: Ubuntu-24.04
+      - name: Claude Code in WSL (hooks, Allow, jump, uninstall)
+        shell: pwsh
+        run: ./scripts/windows-smoke-wsl.ps1 -Installer ./deskling-setup.exe -Distro Ubuntu-24.04 -Out smoke-wsl
+      - name: Keep the app's log, also when a check failed
+        if: always()
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force smoke-wsl | Out-Null; Copy-Item "$env:APPDATA\deskling\deskling.log*" smoke-wsl -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-wsl-results
+          path: smoke-wsl/
+
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [smoke, smoke-msix]
+    needs: [smoke, smoke-msix, smoke-terminals, smoke-wsl]
     runs-on: ubuntu-latest
     defaults:
       run:

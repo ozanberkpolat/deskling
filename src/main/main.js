@@ -198,7 +198,7 @@ function openSession(id) {
   const target = local?.target(String(id))
   if (target && win) {                              // a session on this PC: bring its terminal forward
     win.focus(target).then(r => {
-      if (r.ok) return
+      if (r.ok) return log(`terminal brought forward (${r.how})`)
       log(`could not bring the terminal forward (${r.error || r.how})`)
       widget.send('notice', "Couldn't find that terminal")
     })
