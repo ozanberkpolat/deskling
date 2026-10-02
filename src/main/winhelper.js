@@ -155,7 +155,11 @@ export function createWinHelper({ log, platform = process.platform, spawnFn = sp
   }
 
   return {
-    pid: async (port, hookPort, ms = 1000) => (await ask({ cmd: 'pid', port, hookPort }, ms)).pid ?? null,
+    async pid(port, hookPort, ms = 1000) {
+      const r = await ask({ cmd: 'pid', port, hookPort }, ms)
+      if (!r.pid) log?.(`no terminal found for the hook on port ${port}: ${r.error || 'no owning process'}`)
+      return r.pid ?? null
+    },
     focus: target => ask({ cmd: 'focus', ...target }, 5000),
     // PowerShell takes seconds to start: a cold first lookup timed out and the first session got no jump
     warm() { ensure() },
