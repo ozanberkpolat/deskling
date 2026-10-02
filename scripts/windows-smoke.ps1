@@ -22,7 +22,7 @@ function Hooks() {
   $d = Get-Content $settings -Raw | ConvertFrom-Json -AsHashtable
   @($d.hooks.Values | ForEach-Object { $_ } | ForEach-Object { $_.hooks } | Where-Object { $_ })
 }
-function Ours() { @(Hooks | Where-Object { $_.headers -and $_.headers['X-Deskling-Mark'] -eq 'deskling-v1' }) }
+function Ours() { @(Hooks | Where-Object { $_.headers -and $_.headers['X-Deskling-Mark'] -eq 'deskling-v2' }) }
 function Legacy() { @(Hooks | Where-Object { $_.headers -and $_.headers['X-CcDog-Mark'] }) }
 # counted in the text: a Where-Object over the parsed hooks counted the user's hook twice
 function Theirs() { if (Test-Path $settings) { [regex]::Matches((Get-Content $settings -Raw), '"command"\s*:\s*"echo theirs"') } else { @() } }

@@ -20,7 +20,7 @@ function Shot($name) {
 }
 function Until($cond, $seconds = 30) { $end = (Get-Date).AddSeconds($seconds); while (-not (& $cond)) { if ((Get-Date) -gt $end) { return $false }; Start-Sleep -Milliseconds 500 }; return $true }
 $settings = Join-Path $env:USERPROFILE '.claude\settings.json'
-function Ours() { if (Test-Path $settings) { [regex]::Matches((Get-Content $settings -Raw), '"X-Deskling-Mark"\s*:\s*"deskling-v1"').Count } else { 0 } }
+function Ours() { if (Test-Path $settings) { [regex]::Matches((Get-Content $settings -Raw), '"X-Deskling-Mark"\s*:\s*"deskling-v2"').Count } else { 0 } }
 function Running() { [bool](Get-Process deskling -ErrorAction SilentlyContinue) }
 $sdk = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64' -Directory | Sort-Object Name | Select-Object -Last 1
 

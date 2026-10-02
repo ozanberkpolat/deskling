@@ -84,6 +84,10 @@ jobs:
       - name: Install, upgrade, hooks, first start, uninstall
         shell: pwsh
         run: ./scripts/windows-smoke.ps1 -Installer ./deskling-setup.exe -Out smoke
+      - name: Keep the app's log, also when a check failed
+        if: always()
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force smoke | Out-Null; Copy-Item "$env:APPDATA\deskling\deskling.log*" smoke -ErrorAction SilentlyContinue
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -102,6 +106,10 @@ jobs:
       - name: Install the Store package, first start, hooks, uninstall
         shell: pwsh
         run: ./scripts/windows-smoke-msix.ps1 -Package ./deskling.msix -Publisher 'CN=CE54EF76-5C7E-4E9A-99C3-9CD72C74D9E7' -Out smoke-msix
+      - name: Keep the app's log, also when a check failed
+        if: always()
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force smoke-msix | Out-Null; Copy-Item "$env:LOCALAPPDATA\Packages\OzanBerkPolat.DesklingDeskBuddy_*\LocalCache\Roaming\deskling\deskling.log*" smoke-msix -ErrorAction SilentlyContinue
       - uses: actions/upload-artifact@v4
         if: always()
         with:
