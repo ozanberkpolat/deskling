@@ -90,6 +90,7 @@ function hookToken() {
 // null = not asked yet: leave the file alone.
 function applyLocalHooks(c) {
   if (c.localHooks === null) return
+  if (c.localHooks) win?.warm()
   try {
     const on = hooksInstalled(CLAUDE_SETTINGS, hookUrl(c))
     if (c.localHooks && !on) { installHooks(CLAUDE_SETTINGS, { url: hookUrl(c), token: hookToken() }); log(`added Deskling hooks to ${CLAUDE_SETTINGS}; Claude sessions started from now on show up`) }
@@ -388,6 +389,7 @@ function start() {
   applyHotkey(config.get())
   applyFullscreen(config.get())
   win = createWinHelper({ log })
+  if (config.get().localHooks) win.warm()
   local = createLocal({
     onSession: s => store.dispatch({ type: 'session', data: s }),
     onGone: id => store.dispatch({ type: 'gone', data: { id } }),

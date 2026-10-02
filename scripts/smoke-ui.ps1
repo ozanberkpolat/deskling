@@ -35,10 +35,14 @@ function Uia($mode, $q = '', $tries = 10) {
 # press the first invokable element whose name matches (wildcards), e.g. 'Allow' or '*my-app*'
 function Press($like) { Uia 'press' $like }
 function ListState() { Uia 'state' }
+Add-Type -Namespace SmokeUi -Name Fg -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder b, int n);'
+function FgName() { $b = New-Object System.Text.StringBuilder 256; [void][SmokeUi.Fg]::GetWindowText([SmokeUi.Fg]::GetForegroundWindow(), $b, 256); $b.ToString() }
 # open the list with the hotkey, but only when it is closed (the hotkey toggles); Deskling then has the foreground
 function OpenList() {
   if ((ListState) -ne 'open') { (New-Object -ComObject WScript.Shell).SendKeys('^%d'); Start-Sleep 2 }
-  $s = ListState
-  Write-Host "list: $s"
+  Write-Host "list: $(ListState); foreground: $(FgName)"
 }
-function CloseList() { if ((ListState) -eq 'open') { (New-Object -ComObject WScript.Shell).SendKeys('^%d'); Start-Sleep 1 } }
+function CloseList() {
+  if ((ListState) -eq 'open') { (New-Object -ComObject WScript.Shell).SendKeys('^%d'); Start-Sleep 1 }
+  Write-Host "list: $(ListState) after closing"
+}

@@ -121,7 +121,7 @@ export function createReader(onReply) {
 }
 
 export function createWinHelper({ log, platform = process.platform, spawnFn = spawn }) {
-  if (platform !== 'win32') return { pid: async () => null, focus: async () => ({ ok: false, how: 'unsupported' }), stop() {} }
+  if (platform !== 'win32') return { pid: async () => null, focus: async () => ({ ok: false, how: 'unsupported' }), warm() {}, stop() {} }
   let child = null, seq = 0
   const waiting = new Map()                        // id → resolve
 
@@ -154,6 +154,8 @@ export function createWinHelper({ log, platform = process.platform, spawnFn = sp
   return {
     pid: async (port, hookPort, ms = 1000) => (await ask({ cmd: 'pid', port, hookPort }, ms)).pid ?? null,
     focus: target => ask({ cmd: 'focus', ...target }, 5000),
+    // PowerShell takes seconds to start: a cold first lookup timed out and the first session got no jump
+    warm() { ensure() },
     stop() { child?.kill() },
   }
 }
