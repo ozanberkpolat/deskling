@@ -25,12 +25,27 @@ Add-Type -Namespace Deskling -Name W -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
 [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
 [DllImport("user32.dll")] public static extern void keybd_event(byte k, byte s, uint f, UIntPtr e);
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
+[DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool attach);
+[DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
 '@
 $A = [System.Windows.Automation.AutomationElement]
 function Front($h) {
   if ([Deskling.W]::IsIconic($h)) { [void][Deskling.W]::ShowWindow($h, 9) }
   [Deskling.W]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [Deskling.W]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)   # a tap of Alt lets us take the foreground
-  [Deskling.W]::SetForegroundWindow($h)
+  [void][Deskling.W]::SetForegroundWindow($h)
+  Start-Sleep -Milliseconds 150
+  $fg = [Deskling.W]::GetForegroundWindow()
+  if ($fg -ne $h) {                     # refused (foreground lock): share the current foreground thread's input queue, then retry
+    $me = [Deskling.W]::GetCurrentThreadId(); $them = [Deskling.W]::GetWindowThreadProcessId($fg, [IntPtr]::Zero)
+    [void][Deskling.W]::AttachThreadInput($me, $them, $true)
+    [void][Deskling.W]::BringWindowToTop($h); [void][Deskling.W]::SetForegroundWindow($h)
+    [void][Deskling.W]::AttachThreadInput($me, $them, $false)
+    Start-Sleep -Milliseconds 150
+  }
+  [Deskling.W]::GetForegroundWindow() -eq $h          # ok only when it really is in front
 }
 function Focus($r) {
   $top = [IntPtr]::Zero; $title = ''
@@ -61,7 +76,7 @@ function Focus($r) {
     $wins = $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)
     foreach ($w in $wins) {
       $n = $w.Current.Name
-      if ($n -and $n.IndexOf([string]$r.folder, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and ($r.term -ne 'vscode' -or $n -like '*Visual Studio Code*')) {
+      if ($n -and [Deskling.W]::IsWindowVisible([IntPtr]$w.Current.NativeWindowHandle) -and $n.IndexOf([string]$r.folder, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and ($r.term -ne 'vscode' -or $n -like '*Visual Studio Code*')) {
         return @{ ok = [bool](Front ([IntPtr]$w.Current.NativeWindowHandle)); how = 'title' }
       }
     }

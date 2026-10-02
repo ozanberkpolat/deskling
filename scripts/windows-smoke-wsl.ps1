@@ -31,23 +31,7 @@ $programs = Join-Path $env:LOCALAPPDATA 'Programs'
 function Put($file, $text) { $text | wsl.exe -d $Distro -e sh -c "tr -d '\r' > $file" }
 function InDistro($cmd) { wsl.exe -d $Distro -e sh -c $cmd }
 function DistroSettings() { (InDistro 'cat "$HOME/.claude/settings.json" 2>/dev/null; true') -join "`n" }
-# UIA: press the first button whose name matches (Chromium builds its tree on demand: retry)
-function Press($like) {
-  powershell.exe -NoProfile -Command @"
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-`$A = [System.Windows.Automation.AutomationElement]
-`$btn = New-Object System.Windows.Automation.PropertyCondition(`$A::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)
-for (`$i = 0; `$i -lt 8; `$i++) {
-  foreach (`$e in `$A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, `$btn)) {
-    `$p = `$null
-    if (`$e.Current.Name -like '$like' -and `$e.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]`$p)) { `$p.Invoke(); "pressed: `$(`$e.Current.Name)"; exit }
-  }
-  Start-Sleep 1
-}
-'not found'
-"@
-}
-function OpenList() { $ws = New-Object -ComObject WScript.Shell; $ws.SendKeys('{ESC}'); Start-Sleep 1; $ws.SendKeys('^%d'); Start-Sleep 2 }
+. (Join-Path $PSScriptRoot 'smoke-ui.ps1')
 
 # ── 1. Deskling with this distro turned on (as the Settings checkbox does) ──
 New-Item -ItemType Directory -Force $appdata | Out-Null
@@ -83,7 +67,7 @@ OpenList
 Shot '1-wsl-session'
 $row = Press '*wsljump*'
 Write-Host "row: $row"
-Check ($row -match 'WSL') 'the WSL session shows in the list, with its WSL chip'
+Check ($row -match 'pressed.*WSL') 'the WSL session shows in the list, with its WSL chip'
 Start-Sleep 3
 Shot '2-after-jump'
 $fg = FgTitle

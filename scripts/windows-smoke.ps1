@@ -16,6 +16,7 @@ function Shot($name) {
     $bmp.Save((Join-Path $Out "$name.png"))
   } catch { Write-Host "screenshot $name failed: $_" }
 }
+. (Join-Path $PSScriptRoot 'smoke-ui.ps1')
 function Until($cond, $seconds = 30) { $end = (Get-Date).AddSeconds($seconds); while (-not (& $cond)) { if ((Get-Date) -gt $end) { return $false }; Start-Sleep -Milliseconds 500 }; return $true }
 function Hooks() {
   if (-not (Test-Path $settings)) { return @() }
@@ -130,14 +131,15 @@ Check ($answer -match '"behavior":"allow"') 'Allow in the list answers the held 
 $job = Ask 'perm3'
 Start-Sleep 3
 $ws = New-Object -ComObject WScript.Shell
-$ws.SendKeys('{ESC}'); Start-Sleep 1                          # the list may still be open from 3b
-$ws.SendKeys('^%d'); Start-Sleep 2                            # open the list
+CloseList; OpenList                                           # opened by the hotkey, so the list has the keyboard
 $ws.SendKeys('a'); Start-Sleep 2
 Check ($job.State -eq 'Running') 'WASD: a stray A (no W/S first) answers nothing'
-$ws.SendKeys('s'); Start-Sleep 1; $ws.SendKeys('a')
+$ws.SendKeys('s'); Start-Sleep 1
+Shot '2d-wasd-highlight'
+$ws.SendKeys('a')
 $answer = Receive-Job $job -Wait -AutoRemoveJob
 Check ($answer -match '"behavior":"allow"') 'WASD: S then A allows the highlighted question'
-$ws.SendKeys('{ESC}')
+CloseList
 
 $job = Ask 'perm2'                                            # nobody answers this one
 $answer = Receive-Job $job -Wait -AutoRemoveJob

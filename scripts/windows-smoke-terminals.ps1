@@ -54,24 +54,8 @@ Start-Sleep 300
 "@
   [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
 }
-# Open the list with the hotkey (Deskling takes the foreground), then click the row through UI Automation.
-function ClickRow($folder) {
-  $ws = New-Object -ComObject WScript.Shell
-  $ws.SendKeys('{ESC}'); Start-Sleep 1
-  $ws.SendKeys('^%d'); Start-Sleep 2
-  powershell.exe -NoProfile -Command @"
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-`$A = [System.Windows.Automation.AutomationElement]
-`$btn = New-Object System.Windows.Automation.PropertyCondition(`$A::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)
-for (`$i = 0; `$i -lt 8; `$i++) {
-  foreach (`$e in `$A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, `$btn)) {
-    if (`$e.Current.Name -like '*$folder*') { `$e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); 'clicked'; exit }
-  }
-  Start-Sleep 1
-}
-'not found'
-"@
-}
+. (Join-Path $PSScriptRoot 'smoke-ui.ps1')
+function ClickRow($folder) { OpenList; Press "*$folder*" }
 function Helper() { (Select-String -Path $log -Pattern 'terminal brought forward|could not bring the terminal' | Select-Object -Last 1).Line }
 
 # ── Windows Terminal: the target tab first, then a decoy tab that becomes the active one ──
