@@ -77,7 +77,9 @@ const lvl = p => (p >= 95 ? 'h' : p >= 80 ? 'w' : '')
 export function quotaLine(q, now = Date.now()) {
   const part = (name, w) => {
     const s = el('span', lvl(w?.pct ?? 0), w ? `${name} ${w.pct}%` : `${name} –`)
-    return w?.resetAt ? [s, ` · ${resetLabel(w.resetAt, now)}`] : [s]
+    const parts = w?.resetAt ? [s, ` · ${resetLabel(w.resetAt, now)}`] : [s]
+    if (w?.hitAt) parts.push(el('span', 'w', ` · full ~${resetLabel(w.hitAt, now)}`))
+    return parts
   }
   const line = el('div', 'qline')
   line.append(...part('5h', q.five), '   ', ...part('Week', q.week), q.stale ? `   · ${q.ageMin >= 120 ? Math.round(q.ageMin / 60) + ' h' : q.ageMin + ' min'} old` : '')
@@ -92,6 +94,7 @@ function quotaRow(q, now) {
     bar.append(fill)
     row.append(el('span', null, name), bar, el('span', null, w ? `${w.pct}%` : '–'))
     if (w?.resetAt) row.append(el('span', 'rs', ''), el('span', 'rs', `resets ${resetLabel(w.resetAt, now)}`), el('span'))
+    if (w?.hitAt) row.append(el('span', 'rs', ''), el('span', 'rs pace', `at this pace, full at ${resetLabel(w.hitAt, now)}`), el('span'))
   }
   if (q.stale) row.append(el('span', 'age', `Updated ${q.ageMin >= 120 ? Math.round(q.ageMin / 60) + ' hours' : q.ageMin + ' minutes'} ago`))
   return row

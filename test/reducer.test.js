@@ -303,3 +303,35 @@ test('pups: active subagents of working sessions, capped at 3', () => {
   assert.equal(viewmodel(st).pups, 3)
   assert.equal(viewmodel(run([snap([S('a', 'working', { agentsActive: 1 })])]).st).pups, 1)
 })
+
+test('quota pace: rising readings give a time the window fills; flat, short, falling or after reset give none', async () => {
+  const { addPace, PACE } = await import('../src/shared/reducer.js')
+  const { paceHit } = await import('../src/shared/viewmodel.js')
+  const reset = 1_000_000 + 4 * 3600                             // epoch s
+  const read = (at, pct, resetsAt = reset) => ({ at, five: { pct, resetsAt }, week: null })
+  let h = { five: [], week: [] }
+  for (const [t, p] of [[0, 20], [300, 25], [600, 30], [900, 35]]) h = addPace(h, read(1_000_000 + t, p))
+  assert.equal(h.five.length, 4)
+  // 15 points in 900 s → 1/60 % per s; 65 % to go → 3900 s after the last reading
+  const now = (1_000_000 + 900) * 1000
+  assert.equal(paceHit(h.five, reset * 1000, now), (1_000_000 + 900 + 3900) * 1000)
+  assert.equal(paceHit(h.five, (1_000_000 + 1000) * 1000, now), null, 'resets before it would fill')
+  assert.equal(paceHit(h.five.slice(0, 2), reset * 1000, now), null, 'under 10 minutes of readings')
+  assert.equal(paceHit([[0, 40, null], [1000, 40, null]], null, 0), null, 'flat')
+  assert.equal(paceHit([[0, 40, null], [1000, 30, null]], null, 0), null, 'falling')
+  // a reading 3 s after the last replaces it; a new reset time starts over; an hour is kept at most
+  h = addPace(h, read(1_000_000 + 903, 36))
+  assert.equal(h.five.length, 4)
+  assert.equal(h.five.at(-1)[1], 36)
+  assert.equal(addPace(h, read(1_000_000 + 1200, 2, reset + 18000)).five.length, 1)
+  assert.equal(addPace(h, read(1_000_000 + 903 + PACE.keepS + 1, 50)).five.length, 1)
+})
+
+test('quota pace: the reducer keeps the history and the view model shows only the time', () => {
+  let st = initialState()
+  const reset = 2_000_000 + 3 * 3600
+  for (const [t, p] of [[0, 50], [400, 55], [800, 60]]) st = reduce(st, { type: 'quota', data: { at: 2_000_000 + t, five: { pct: p, resetsAt: reset }, week: null, source: 'laptop' }, now: 0 }).state
+  const q = viewmodel(st, (2_000_000 + 800) * 1000).quota
+  assert.ok(q.five.hitAt > (2_000_000 + 800) * 1000)
+  assert.equal('quotaHist' in viewmodel(st), false, 'history stays out of the view model')
+})

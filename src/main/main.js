@@ -134,7 +134,8 @@ function statusText() {
   const b = v.badges
   return `Connected · ${b.waiting} waiting · ${b.working} working · ${b.paperclip} Paperclip${quotaText(v.quota)}`
 }
-const quotaText = q => q ? ` · 5h ${q.five ? q.five.pct + '%' : '–'} · week ${q.week ? q.week.pct + '%' : '–'}` : ''
+const hm = ms => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+const quotaText = q => q ? ` · 5h ${q.five ? q.five.pct + '%' : '–'}${q.five?.hitAt ? ` (full ~${hm(q.five.hitAt)})` : ''} · week ${q.week ? q.week.pct + '%' : '–'}` : ''
 
 function connect() {
   source?.stop()

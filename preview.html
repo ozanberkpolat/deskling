@@ -182,6 +182,10 @@ const scen = [
     pcs = [...pcs, pcItem(`n${Date.now()}`, 'Memory distill review', 'New proposal from memory-distill')]
     dispatch({ type: 'paperclip', data: { items: pcs, stale: false } })
   }],
+  ['Quota climbing', 'four readings 5 minutes apart, 20% → 35%: the list and the peek add "at this pace, full at …" (the 5-hour window fills before it resets).', () => {
+    const reset = now() + 4 * 3600
+    for (const p of [20, 25, 30, 35]) { dispatch({ type: 'quota', data: { five: { pct: p, resetsAt: reset }, week: { pct: 18, resetsAt: reset + 3 * 86400 }, at: now(), source: 'laptop' } }); window.preview.advance(5 * 60_000) }
+  }],
   ['Quota 62 / 18', 'quota: a calm grey arc 62% of the way round, a dot at 18% for the week. Hover for the reset times.', () => quota(62, 18)],
   ['Quota 85 / 40', 'past 80%: the arc and the dot turn amber.', () => quota(85, 40)],
   ['Quota 97 / 88', 'past 95%: red. Still no sound or animation.', () => quota(97, 88)],

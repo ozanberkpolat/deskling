@@ -1,18 +1,32 @@
 // View model: the only thing the renderer gets. Small (≤5 KB), plain JSON. Pure.
-import { CTX_WARN, WAITING, mood } from './reducer.js'
+import { CTX_WARN, WAITING, PACE, mood } from './reducer.js'
 
 export const QUOTA_WARN = 80, QUOTA_HIGH = 95, QUOTA_STALE_MIN = 30
 
 // The arc's numbers. A window whose reset time has passed reads 0: it rolled over and no newer
 // reading has come in yet. The level follows the fuller of the two windows.
-export function quotaView(q, now = Date.now()) {
+// When the window fills up at the pace of its readings (ms), or null: needs 10+ minutes of rising
+// readings, and the limit has to come before the window resets.
+export function paceHit(pts, resetAt, now = Date.now()) {
+  if (!pts || pts.length < 2) return null
+  const [a, b] = [pts[0], pts.at(-1)]
+  if (b[0] - a[0] < PACE.minSpanS || b[1] >= 100) return null
+  const rate = (b[1] - a[1]) / (b[0] - a[0])                // percent per second
+  if (rate <= 0) return null
+  const hit = (b[0] + (100 - b[1]) / rate) * 1000
+  return hit <= now || (resetAt && hit >= resetAt) ? null : Math.round(hit)
+}
+
+export function quotaView(q, now = Date.now(), hist = null) {
   if (!q) return null
-  const win = w => {
+  const win = (w, pts) => {
     if (!w) return null
     const reset = w.resetsAt ? w.resetsAt * 1000 : null
-    return reset && reset <= now ? { pct: 0, resetAt: null } : { pct: Math.round(w.pct), resetAt: reset }
+    if (reset && reset <= now) return { pct: 0, resetAt: null }
+    const hitAt = paceHit(pts, reset, now)
+    return { pct: Math.round(w.pct), resetAt: reset, ...(hitAt ? { hitAt } : {}) }
   }
-  const five = win(q.five), week = win(q.week)
+  const five = win(q.five, hist?.five), week = win(q.week, hist?.week)
   const top = Math.max(five?.pct ?? 0, week?.pct ?? 0)
   const ageMin = Math.max(0, Math.round((now - (q.at || 0) * 1000) / 60_000))
   return { five, week, level: top >= QUOTA_HIGH ? 'high' : top >= QUOTA_WARN ? 'warn' : 'calm',
@@ -63,7 +77,7 @@ export function viewmodel(st, now = Date.now()) {
       working,
       paperclip: st.paperclip.items.length,
     },
-    quota: quotaView(st.quota, now),
+    quota: quotaView(st.quota, now, st.quotaHist),
     rows: rows.slice(0, MAX_ROWS),
     more: Math.max(0, rows.length - MAX_ROWS),
   }

@@ -34,6 +34,7 @@ export function initialState({ finishedTtlMin = 30, nagAfterMin = 5 } = {}) {
     ctxWarned: {},        // session id → true after its context crossed CTX_WARN, until CTX_REARM
     pcSeeded: false,      // first real paperclip list applied (the relay sends null until it has one)
     quota: null,          // {five: {pct, resetsAt} | null, week: …, at (epoch s), source}: freshest wins
+    quotaHist: { five: [], week: [] },   // recent [at, pct, resetsAt] per window, for the pace (viewmodel)
     lastChirp: 0,
     finishedTtlMs: finishedTtlMin * 60_000,
     nagAfterMs: nagAfterMin * 60_000,               // 0 = never re-chirp
@@ -113,6 +114,13 @@ export function reduce(state, action) {
     st.pcNagged = pick(st.pcNagged, keys)
   }
 
+  // the newest reading wins; each accepted reading also goes into the pace history
+  function setQuota(q) {
+    const next = mergeQuota(st.quota, q)
+    if (next !== st.quota) st.quotaHist = addPace(st.quotaHist, next)
+    st.quota = next
+  }
+
   switch (action.type) {
     case 'snapshot': {
       const d = action.data || {}
@@ -126,7 +134,7 @@ export function reduce(state, action) {
       else for (const [id, s] of Object.entries(st.sessions)) if (!isLocal(s) && !ids.has(id)) applyGone(id)
       for (const s of d.sessions || []) applySession(s, silent)
       applyPaperclip(d.paperclip, silent)
-      st.quota = mergeQuota(st.quota, d.quota && { ...d.quota, source: 'vps' })
+      setQuota(d.quota && { ...d.quota, source: 'vps' })
       st.seeded = true
       break
     }
@@ -134,7 +142,7 @@ export function reduce(state, action) {
     case 'gone': applyGone(action.data.id); break
     case 'paperclip': applyPaperclip(action.data, !st.seeded); break
     case 'status': st.status = { ...st.status, ...action.data }; break
-    case 'quota': st.quota = mergeQuota(st.quota, action.data && { source: 'vps', ...action.data }); break
+    case 'quota': setQuota(action.data && { source: 'vps', ...action.data }); break
     case 'local':
       st.local = true
       st.connected = true
@@ -181,6 +189,22 @@ export function mood(st) {
 }
 
 // One account, two machines reporting it: keep whichever reading is newer.
+// Pace history: an hour of readings per window, at most 20, a reading within 5 s of the last one
+// replaces it, and a new reset time (the window rolled over) starts afresh.
+export const PACE = { keepS: 3600, maxPoints: 20, minSpanS: 600 }
+export function addPace(hist = { five: [], week: [] }, q) {
+  const out = { ...hist }
+  for (const w of ['five', 'week']) {
+    const win = q?.[w]
+    if (!win || typeof q.at !== 'number') continue
+    let pts = out[w] || []
+    if (pts.length && pts.at(-1)[2] !== (win.resetsAt ?? null)) pts = []
+    if (pts.length && Math.abs(pts.at(-1)[0] - q.at) < 5) pts = pts.slice(0, -1)
+    out[w] = [...pts, [q.at, win.pct, win.resetsAt ?? null]].filter(p => q.at - p[0] <= PACE.keepS).slice(-PACE.maxPoints)
+  }
+  return out
+}
+
 export function mergeQuota(prev, next) {
   if (!next || !(next.five || next.week)) return prev
   return !prev || (next.at || 0) >= (prev.at || 0) ? next : prev
