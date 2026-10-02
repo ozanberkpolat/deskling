@@ -51,7 +51,9 @@ Windows 10 and 11. A macOS version is planned.
 - **Allow / Deny:** when a session asks for permission, its row shows the command with Allow and
   Deny buttons. Claude Code's own prompt is in the terminal at the same time; whichever you answer
   first wins. If you answer neither within 90 s, nothing is decided for you: the terminal prompt just
-  keeps waiting. Turn it off in Settings if you prefer to answer only in the terminal.
+  keeps waiting. Turn it off in Settings if you prefer to answer only in the terminal. A multiple
+  choice question from Claude (AskUserQuestion) shows as "Question: …" without buttons: click the row
+  and answer it in the terminal.
 - **Click a session** to bring its terminal forward: the Windows Terminal window (and, when its
   title matches, the right tab), a classic console window, or the VS Code window of that folder.
 - **Double-click** (or press and hold) to pet it. That also marks everything as seen.

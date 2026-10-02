@@ -60,11 +60,11 @@ Expected rating: 3+ / Everyone.
 > Deskling is an independent project, not affiliated with Anthropic. Claude Code is a product of
 > Anthropic and is needed for Deskling to show anything.
 
-**What's new in this version** (1.2.0):
-> Answer from the keyboard, WASD style: W / S pick a question, A allows, D denies. Claude Code inside
-> WSL shows up too. The quota line says when you would hit the limit at your current pace. Screen
-> reader labels, high contrast and reduced motion. Report a problem from the tray menu. Clicking a
-> session now brings its terminal forward reliably, also right after Deskling starts.
+**What's new in this version** (1.2.1):
+> A multiple choice question from Claude now shows as a question (answer it in the terminal) instead
+> of Allow / Deny buttons that could not answer it. Hooks answer faster: finding a session's terminal
+> no longer adds a second to each of Claude Code's steps. 1.2.0 added WASD keys, WSL support, quota
+> pace, screen reader support and Report a problem.
 
 **Product features** (one per line, max 20):
 > Shows what each Claude Code session on this PC is doing, at a glance
