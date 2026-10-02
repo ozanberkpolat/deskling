@@ -37,6 +37,7 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
     }
     r.updated = t
     if (meta.term) r.term = meta.term
+    if (meta.wsl) r.slim.wsl = meta.wsl
     const s = r.slim
     const set = state => { if (s.state !== state) { s.state = state; s.since = t / 1000 } }
     const ev = p.hook_event_name, aid = p.agent_id

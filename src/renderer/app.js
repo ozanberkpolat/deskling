@@ -107,7 +107,7 @@ function announce(v) {
 let notice = '', noticeTimer = null, hl = null             // hl: the keyboard highlight {key, askId}
 function draw() {
   if (vm) renderList(list, vm, { openUrl: bridge.openUrl, openSession: bridge.openSession, answer: bridge.answer,
-    offerStatusline: cfg.offerStatusline && bridge.setupStatusline, notice, highlight: hl?.key })
+    offerStatusline: cfg.offerStatusline && bridge.setupStatusline, offerWsl: cfg.offerWsl && bridge.setupWsl, notice, highlight: hl?.key })
 }
 // a short line at the bottom of the list ("Couldn't find that terminal"), gone after 4 s
 bridge.onNotice?.(text => {

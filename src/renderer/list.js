@@ -17,6 +17,7 @@ export function rowParts(r, now = Date.now()) {
   const top = el('div', 'top')
   top.append(el('span', 'dot'), el('span', 'proj', r.project || '?'))
   if (r.host) top.append(el('span', 'host', r.host))
+  if (r.wsl) { const w = el('span', 'host', 'WSL'); w.title = `Claude Code in WSL (${r.wsl})`; top.append(w) }
   top.append(el('span', 'state', r.k === 'pc' ? r.state : stateLabel(r)))
   if (r.ctx >= CTX_WARN) top.append(el('span', 'ctx', `ctx ${r.ctx}%`))
   if (typeof r.cost === 'number') {
@@ -30,7 +31,7 @@ export function rowParts(r, now = Date.now()) {
   return parts
 }
 
-export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer, offerStatusline, notice, highlight } = {}) {
+export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer, offerStatusline, offerWsl, notice, highlight } = {}) {
   const frag = document.createDocumentFragment()
   let group = null
   for (const r of vm.rows) {
@@ -55,6 +56,12 @@ export function renderList(root, vm, { now = Date.now(), openUrl, openSession, a
     const b = el('button', 'offer', 'Show your plan quota and session costs…')
     b.type = 'button'
     b.addEventListener('click', offerStatusline)
+    frag.append(b)
+  }
+  if (offerWsl) {
+    const b = el('button', 'offer', 'Claude Code in WSL? Watch it too…')
+    b.type = 'button'
+    b.addEventListener('click', offerWsl)
     frag.append(b)
   }
   const st = statusLine(vm)

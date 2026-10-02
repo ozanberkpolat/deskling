@@ -63,6 +63,11 @@
     <h2>Claude Code</h2>
     <label class="field check"><input type="checkbox" id="localHooks"><span>Watch Claude Code on this PC</span></label>
     <p class="note">Adds Deskling's hooks to your Claude Code settings (backed up once); turning this off takes them out again.</p>
+    <div id="wslBox" hidden>
+      <span class="label">Also watch Claude Code in WSL</span>
+      <div class="wsl" id="wslList"></div>
+      <p class="note">Adds Deskling's hooks inside that Linux distro too (they reach Deskling through Windows' own curl.exe). Turning one off takes them out again.</p>
+    </div>
     <label class="field check"><input type="checkbox" id="answerPermissions"><span>Answer permission prompts from the list (Allow / Deny)</span></label>
     <label class="field"><span class="label">A prompt waits for the list up to</span><input type="number" id="holdSeconds" min="5" max="110"><span class="unit">s, then only the terminal decides</span></label>
     <label class="field check"><input type="checkbox" id="statusline"><span>Show plan quota and session cost</span></label>

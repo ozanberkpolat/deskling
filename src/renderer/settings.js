@@ -77,8 +77,27 @@ $('openConfig').addEventListener('click', () => bridge.openConfig())
 $('openLog').addEventListener('click', () => bridge.openLog())
 $('report').addEventListener('click', () => bridge.reportProblem())
 
+// one checkbox per WSL distro Deskling found; the list is rebuilt only when the distros change
+function drawWsl() {
+  const found = c.wslFound || []
+  $('wslBox').hidden = !found.length
+  const box = $('wslList')
+  if (box.dataset.found !== found.join(',')) {
+    box.dataset.found = found.join(',')
+    box.replaceChildren(...found.map(d => {
+      const l = document.createElement('label'), i = document.createElement('input'), t = document.createElement('span')
+      l.className = 'field check'; i.type = 'checkbox'; i.dataset.d = d; t.textContent = d
+      i.addEventListener('change', () => set({ wslDistros: [...box.querySelectorAll('input:checked')].map(x => x.dataset.d) }))
+      l.append(i, t)
+      return l
+    }))
+  }
+  for (const i of box.querySelectorAll('input')) { i.checked = (c.wslDistros || []).includes(i.dataset.d); i.disabled = c.localHooks !== true }
+}
+
 function draw() {
   if (!c) return
+  drawWsl()
   $('ver').textContent = `Deskling ${c.version}`
   mascotButtons.forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === c.mascot)))
   showShape(c.shape); showCorner(c.corner)

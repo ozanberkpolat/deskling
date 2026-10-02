@@ -49,7 +49,7 @@ export function viewmodel(st, now = Date.now()) {
                 at: Math.round((s.since || 0) * 1000), detail: s.last, agents: s.agentsActive || 0, ctx: s.ctx ?? null,
                 // what a click does: this PC's terminal (once its process is known), or the relay's web terminal
                 open: s.host === 'laptop' ? (s.canShow ? 'terminal' : null) : (s.tmux ? 'web' : null),
-                ...(s.ask ? { ask: s.ask } : {}), ...(typeof s.cost === 'number' ? { cost: s.cost } : {}),
+                ...(s.ask ? { ask: s.ask } : {}), ...(s.wsl ? { wsl: s.wsl } : {}), ...(typeof s.cost === 'number' ? { cost: s.cost } : {}),
                 ...(s.host && !st.local ? { host: s.host } : {}) })   // no relay: every row is this machine's, no chip
   }
   for (const i of st.paperclip.items) {

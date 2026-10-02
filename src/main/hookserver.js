@@ -64,7 +64,8 @@ export function startHookServer({ port, token, onHook, log, holdPermission = () 
       // where the request came from (the Claude Code process, found by its port) and its terminal
       let term = String(req.headers['x-term'] || '').slice(0, 40)
       if (term.startsWith('$')) term = ''           // the variable was not set in that terminal
-      let meta = { remotePort: req.socket.remotePort, ...(term ? { term } : {}) }
+      const wsl = String(req.headers['x-deskling-wsl'] || '')     // set by a WSL hook (wsl.js): the distro
+      let meta = { remotePort: req.socket.remotePort, ...(term ? { term } : {}), ...(/^[\w.-]{1,64}$/.test(wsl) ? { wsl } : {}) }
       if (ev === 'PermissionRequest' && typeof session === 'string' && holdPermission()) {
         const id = randomBytes(6).toString('hex')
         held.set(id, { res, session, timer: setTimeout(() => finish(id, {}), holdMs) })

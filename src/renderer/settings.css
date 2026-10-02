@@ -46,6 +46,9 @@ button.ghost { background: none; color: var(--muted); }
 button.key { font-family: var(--mono); min-width: 150px; }
 button.key.recording { border-color: var(--accent); color: var(--accent); }
 .buttons { gap: 8px; }
+.wsl { display: grid; gap: 2px; padding-left: 4px; }
+#wslBox { display: grid; gap: 6px; }
+#wslBox[hidden] { display: none; }
 .done { color: var(--good); font-size: 12px; }
 
 .seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; flex-wrap: wrap; }

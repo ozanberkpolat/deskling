@@ -75,7 +75,16 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
     $out.id = $r.id
     if ($r.cmd -eq 'pid') {
       $c = Get-NetTCPConnection -LocalPort ([int]$r.port) -RemotePort ([int]$r.hookPort) -ErrorAction SilentlyContinue | Select-Object -First 1
-      $out.pid = $(if ($c) { [int]$c.OwningProcess } else { $null })
+      $id = $(if ($c) { [int]$c.OwningProcess } else { $null })
+      # a WSL hook comes from curl.exe, which exits at once: its parent wsl.exe holds the tab's console
+      if ($id) {
+        $p = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue
+        if ($p -and $p.Name -eq 'curl.exe') {
+          $pp = Get-CimInstance Win32_Process -Filter "ProcessId=$($p.ParentProcessId)" -ErrorAction SilentlyContinue
+          if ($pp -and $pp.Name -eq 'wsl.exe') { $id = [int]$pp.ProcessId }
+        }
+      }
+      $out.pid = $id
     } elseif ($r.cmd -eq 'focus') { $f = Focus $r; $out.ok = $f.ok; $out.how = $f.how }
   } catch { $out.error = $_.Exception.Message }
   [Console]::Out.WriteLine(($out | ConvertTo-Json -Compress))

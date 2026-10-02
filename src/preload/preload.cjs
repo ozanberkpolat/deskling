@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('deskling', {
   answer: (holdId, session, allow) => ipcRenderer.send('answer', String(holdId), String(session), allow === true),
   showMenu: () => ipcRenderer.send('menu'),
   setupStatusline: () => ipcRenderer.send('setup-statusline'),
+  setupWsl: () => ipcRenderer.send('setup-wsl'),
   // the settings window
   getConfig: () => ipcRenderer.invoke('get-config'),
   setConfig: patch => ipcRenderer.send('set-config', patch),

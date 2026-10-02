@@ -20,6 +20,8 @@ export const DEFAULTS = {
   linkHosts: [],              // with a relay: extra https hosts its items may link to
   localHooks: null,           // watch this machine's Claude Code (hooks in ~/.claude/settings.json); null = ask on first start
   answerPermissions: true,    // Allow / Deny in the list while a session asks for permission (the terminal can still answer)
+  wslDistros: [],             // WSL distros whose Claude Code Deskling watches too (their own hooks, wsl.js)
+  wslOffered: false,          // the list's one-time "Claude Code in WSL?" line was answered
   statusline: null,           // true: our wrapper around Claude Code's status line (quota ring, cost); null = not offered yet
   holdSeconds: 90,            // how long a permission prompt waits for the list before the terminal alone decides
   hookPort: 8033,             // 127.0.0.1 only
@@ -54,8 +56,9 @@ export function normalize(raw = {}) {
   c.finishedTtlMin = clamp(c.finishedTtlMin, 1, 24 * 60, DEFAULTS.finishedTtlMin)
   c.localHooks = typeof c.localHooks === 'boolean' ? c.localHooks : null
   c.statusline = typeof c.statusline === 'boolean' ? c.statusline : null
+  c.wslDistros = Array.isArray(c.wslDistros) ? [...new Set(c.wslDistros.filter(d => typeof d === 'string' && /^[\w.-]{1,64}$/.test(d)))] : []
   c.holdSeconds = Math.round(clamp(c.holdSeconds, 5, 110, DEFAULTS.holdSeconds))   // the hook itself times out at 120 s
-  for (const k of ['hideFromCapture', 'hideInFullscreen', 'autostart', 'disableGpu', 'tucked', 'answerPermissions']) c[k] = typeof c[k] === 'boolean' ? c[k] : DEFAULTS[k]
+  for (const k of ['hideFromCapture', 'hideInFullscreen', 'autostart', 'disableGpu', 'tucked', 'answerPermissions', 'wslOffered']) c[k] = typeof c[k] === 'boolean' ? c[k] : DEFAULTS[k]
   return c
 }
 

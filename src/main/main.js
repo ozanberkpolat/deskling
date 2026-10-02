@@ -21,6 +21,7 @@ import { createWinHelper } from './winhelper.js'
 import { limitsFrom, watchLimits } from './quota.js'
 import { installStatusline, readStatusline, removeStatusline } from './statusline.js'
 import { issueUrl, redact } from './report.js'
+import { createWsl, removeSync as removeWslSync } from './wsl.js'
 import { allowedLinks, safeExternal, sessionUrl } from './links.js'
 import { fromApp, harden } from './security.js'
 import { Store } from './store.js'
@@ -40,6 +41,7 @@ const STATUSLINE_SAVED = () => join(app.getPath('userData'), 'statusline-origina
 if (arg('remove-hooks')) {
   try { removeHooks(CLAUDE_SETTINGS) } catch {}          // a broken settings.json is left untouched
   try { removeStatusline(CLAUDE_SETTINGS, { saveTo: STATUSLINE_SAVED() }) } catch {}   // their own status line back
+  try { removeWslSync(JSON.parse(readFileSync(join(app.getPath('userData'), 'config.json'), 'utf8')).wslDistros || []) } catch {}
   process.exit(0)                                         // now: nothing below may run (no migration, no config)
 } else if (!app.requestSingleInstanceLock()) app.exit(0)
 // The Microsoft Store build (MSIX) has a package identity: Windows gives it the AppUserModelId,
@@ -71,7 +73,7 @@ function serveApp() {
 }
 
 let widget, store, tray, source, fullscreen
-let fsMuted = false, locked = false, hotkeyError = '', local = null, hooks = null, win = null
+let fsMuted = false, locked = false, hotkeyError = '', local = null, hooks = null, win = null, wsl = null, wslFound = []
 // No sound while a full-screen app is in front, during quiet hours, or while the screen is locked.
 const quiet = () => isQuiet(new Date(), config.get().quietHours)
 const muted = () => fsMuted || locked || quiet()
@@ -95,6 +97,15 @@ function applyLocalHooks(c) {
   } catch (e) {
     log(`could not update ${CLAUDE_SETTINGS}: ${e.message} (left untouched)`)
   }
+}
+
+// Keep each WSL distro's Claude Code hooks in line with config.wslDistros (and localHooks).
+function applyWsl(c, prev) {
+  if (!wsl) return
+  const want = c.localHooks === true ? c.wslDistros.filter(d => wslFound.includes(d)) : []
+  const had = prev.localHooks === false ? [] : (prev.wslDistros || [])
+  for (const d of want) wsl.install(d, { port: c.hookPort, token: hookToken() }).catch(e => log(`WSL ${d}: could not add the hooks: ${e.message}`))
+  for (const d of had.filter(d => !want.includes(d))) wsl.remove(d).catch(e => log(`WSL ${d}: could not remove the hooks: ${e.message}`))
 }
 
 // Keep Claude Code's status line in line with config.statusline (true: our wrapper around theirs).
@@ -149,7 +160,8 @@ function connect() {
 
 // What the renderer needs from config, plus the full-screen mute.
 const rendererConfig = c => ({ sound: c.sound, shape: c.shape, corner: c.corner, mascot: c.mascot, idleOpacity: c.idleOpacity, tucked: c.tucked, muted: muted(),
-  offerStatusline: c.localHooks === true && c.statusline !== true })
+  offerStatusline: c.localHooks === true && c.statusline !== true,
+  offerWsl: c.localHooks === true && wslFound.length > 0 && !c.wslOffered && !c.wslDistros.length })
 
 function applyHotkey(c) {
   globalShortcut.unregisterAll()
@@ -215,18 +227,18 @@ async function askLocalHooks() {
 
 // ── the settings window: one at a time, the widget's palette, same no-network rules ──
 let settingsWin = null
-const SETTABLE = ['shape', 'corner', 'mascot', 'idleOpacity', 'tucked', 'sound', 'quietHours', 'nagAfterMin', 'finishedTtlMin',
+const SETTABLE = ['wslDistros', 'wslOffered', 'shape', 'corner', 'mascot', 'idleOpacity', 'tucked', 'sound', 'quietHours', 'nagAfterMin', 'finishedTtlMin',
   'hotkey', 'hideInFullscreen', 'hideFromCapture', 'autostart', 'localHooks', 'answerPermissions', 'statusline', 'holdSeconds', 'hookPort']
-const fullConfig = () => { const { token, relayUrl, ccUrl, linkHosts, ...c } = config.get(); return { ...c, store: STORE, version: app.getVersion() } }
+const fullConfig = () => { const { token, relayUrl, ccUrl, linkHosts, ...c } = config.get(); return { ...c, store: STORE, version: app.getVersion(), wslFound } }
 
-function openSettings() {
+function openSettings(section = '') {
   if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); return }
   settingsWin = new BrowserWindow({ width: 760, height: 720, minWidth: 420, minHeight: 420, title: 'Deskling settings', icon: icon(),
     backgroundColor: '#0a0e14', autoHideMenuBar: true, show: false,
     webPreferences: { preload: join(ROOT, 'src', 'preload', 'preload.cjs'), contextIsolation: true, sandbox: true } })
   settingsWin.once('ready-to-show', () => settingsWin.show())
   settingsWin.on('closed', () => { settingsWin = null })
-  settingsWin.loadURL('app://deskling/src/renderer/settings.html')
+  settingsWin.loadURL('app://deskling/src/renderer/settings.html' + (section ? `#${section}` : ''))
 }
 
 // What a bug report needs, and nothing personal: no token, no relay, no prompt text (the log has none).
@@ -323,6 +335,7 @@ function start() {
   })
   ipcMain.on('open-session', (e, id) => { if (fromApp(e)) openSession(id) })
   ipcMain.on('setup-statusline', e => { if (fromApp(e)) askStatusline() })
+  ipcMain.on('setup-wsl', e => { if (fromApp(e)) { config.set({ wslOffered: true }); openSettings('claude') } })
   ipcMain.handle('get-config', e => (fromApp(e) ? fullConfig() : null))
   ipcMain.on('set-config', (e, patch) => {
     if (!fromApp(e) || !patch || typeof patch !== 'object') return
@@ -355,6 +368,7 @@ function start() {
     if (c.hideInFullscreen !== prev.hideInFullscreen) applyFullscreen(c)
     if (c.localHooks !== prev.localHooks) applyLocalHooks(c)
     if (c.statusline !== prev.statusline || c.localHooks !== prev.localHooks) applyStatusline(c)
+    if (JSON.stringify(c.wslDistros) !== JSON.stringify(prev.wslDistros) || c.localHooks !== prev.localHooks) applyWsl(c, prev)
     if (c.relayUrl !== prev.relayUrl || config.token() !== prevToken) { prevToken = config.token(); connect() }
     if (c.autostart !== prev.autostart) applyAutostart(c)
     prev = c
@@ -398,6 +412,13 @@ function start() {
   })
   applyLocalHooks(config.get())
   applyStatusline(config.get())
+  // WSL: listing distros starts none; only the ones turned on are touched
+  wsl = createWsl({ log })
+  wsl.distros().then(found => {
+    wslFound = found
+    widget.send('config', rendererConfig(config.get()))
+    applyWsl(config.get(), { wslDistros: [] })
+  })
   if (config.get().localHooks === null) askLocalHooks()
   watchLimits({ file: join(homedir(), '.claude', 'limits.json'), log, onQuota: q => store.dispatch({ type: 'quota', data: q }) })
   connect()
