@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('deskling', {
   openSession: id => ipcRenderer.send('open-session', String(id)),
   answer: (holdId, session, allow) => ipcRenderer.send('answer', String(holdId), String(session), allow === true),
   showMenu: () => ipcRenderer.send('menu'),
+  setupStatusline: () => ipcRenderer.send('setup-statusline'),
   ack: () => ipcRenderer.send('ack'),
   dragStart: () => ipcRenderer.send('drag-start'),
   dragEnd: () => ipcRenderer.invoke('drag-end'),

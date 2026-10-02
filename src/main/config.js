@@ -20,6 +20,7 @@ export const DEFAULTS = {
   linkHosts: [],              // with a relay: extra https hosts its items may link to
   localHooks: null,           // watch this machine's Claude Code (hooks in ~/.claude/settings.json); null = ask on first start
   answerPermissions: true,    // Allow / Deny in the list while a session asks for permission (the terminal can still answer)
+  statusline: null,           // true: our wrapper around Claude Code's status line (quota ring, cost); null = not offered yet
   holdSeconds: 90,            // how long a permission prompt waits for the list before the terminal alone decides
   hookPort: 8033,             // 127.0.0.1 only
   sound: { enabled: true, volume: 0.6 },
@@ -52,6 +53,7 @@ export function normalize(raw = {}) {
   c.sound = { enabled: c.sound?.enabled !== false, volume: clamp(c.sound?.volume, 0, 1, DEFAULTS.sound.volume) }
   c.finishedTtlMin = clamp(c.finishedTtlMin, 1, 24 * 60, DEFAULTS.finishedTtlMin)
   c.localHooks = typeof c.localHooks === 'boolean' ? c.localHooks : null
+  c.statusline = typeof c.statusline === 'boolean' ? c.statusline : null
   c.holdSeconds = Math.round(clamp(c.holdSeconds, 5, 110, DEFAULTS.holdSeconds))   // the hook itself times out at 120 s
   for (const k of ['hideFromCapture', 'hideInFullscreen', 'autostart', 'disableGpu', 'tucked', 'answerPermissions']) c[k] = typeof c[k] === 'boolean' ? c[k] : DEFAULTS[k]
   return c

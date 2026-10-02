@@ -16,7 +16,8 @@ export function decision(allow) {
 }
 
 // onDone(id, session) runs whenever a held request ends without an answer from the widget.
-export function startHookServer({ port, token, onHook, log, holdPermission = () => false, holdMs = HOLD_MS, onDone = () => {} }) {
+// onStatusline(payload): Claude Code's status line payload, forwarded by Deskling's status line wrapper.
+export function startHookServer({ port, token, onHook, log, holdPermission = () => false, holdMs = HOLD_MS, onDone = () => {}, onStatusline = () => {} }) {
   const want = Buffer.from(token)
   const ok = got => { const b = Buffer.from(String(got || '')); return b.length === want.length && timingSafeEqual(b, want) }
   const send = (res, code, body = {}) => {
@@ -42,7 +43,7 @@ export function startHookServer({ port, token, onHook, log, holdPermission = () 
   }
 
   const srv = createServer((req, res) => {
-    if (req.url !== '/hook') return send(res, 404)
+    if (req.url !== '/hook' && req.url !== '/statusline') return send(res, 404)
     if (!ok(req.headers['x-deskling-token'])) return send(res, 401)
     let size = 0
     const chunks = []
@@ -53,6 +54,11 @@ export function startHookServer({ port, token, onHook, log, holdPermission = () 
       try { p = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch {
         send(res, 200)
         return log(`hook: payload is not valid JSON (${size} bytes)`)
+      }
+      if (req.url === '/statusline') {
+        send(res, 200)
+        try { onStatusline(p) } catch (e) { log(`statusline: ${e.message}`) }
+        return
       }
       const ev = p?.hook_event_name, session = p?.session_id
       let meta = {}

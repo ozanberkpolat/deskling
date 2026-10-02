@@ -16,7 +16,8 @@ import { describe } from './notify-text.js'
 import { isQuiet } from './quiet.js'
 import { startHookServer } from './hookserver.js'
 import { createLocal } from './local.js'
-import { watchLimits } from './quota.js'
+import { limitsFrom, watchLimits } from './quota.js'
+import { installStatusline, readStatusline, removeStatusline } from './statusline.js'
 import { allowedLinks, safeExternal, sessionUrl } from './links.js'
 import { fromApp, harden } from './security.js'
 import { Store } from './store.js'
@@ -31,8 +32,11 @@ const GALLERY = !!arg('gallery')
 const REPLAY = arg('replay')?.split('=')[1]
 const CLAUDE_SETTINGS = join(homedir(), '.claude', 'settings.json')
 
+const STATUSLINE_SAVED = () => join(app.getPath('userData'), 'statusline-original.json')
+
 if (arg('remove-hooks')) {
   try { removeHooks(CLAUDE_SETTINGS) } catch {}          // a broken settings.json is left untouched
+  try { removeStatusline(CLAUDE_SETTINGS, { saveTo: STATUSLINE_SAVED() }) } catch {}   // their own status line back
   process.exit(0)                                         // now: nothing below may run (no migration, no config)
 } else if (!app.requestSingleInstanceLock()) app.exit(0)
 // The Microsoft Store build (MSIX) has a package identity: Windows gives it the AppUserModelId,
@@ -90,6 +94,33 @@ function applyLocalHooks(c) {
   }
 }
 
+// Keep Claude Code's status line in line with config.statusline (true: our wrapper around theirs).
+function applyStatusline(c) {
+  if (c.statusline === null) return
+  try {
+    if (c.statusline && c.localHooks === true) {
+      const did = installStatusline(CLAUDE_SETTINGS, { port: c.hookPort, token: hookToken(), saveTo: STATUSLINE_SAVED() })
+      if (did === 'obpterm') log('status line: OBPTerm already writes the quota file; left as it is')
+      else if (did !== 'unchanged') log(`status line: ${did}`)
+    } else if (removeStatusline(CLAUDE_SETTINGS, { saveTo: STATUSLINE_SAVED() })) log('status line: put the original back')
+  } catch (e) {
+    log(`could not update the status line in ${CLAUDE_SETTINGS}: ${e.message} (left untouched)`)
+  }
+}
+
+async function askStatusline() {
+  const { response } = await dialog.showMessageBox({
+    type: 'question', buttons: ['Show quota and cost', 'Not now'], defaultId: 0, cancelId: 1, noLink: true,
+    title: 'Deskling',
+    message: 'Show your plan quota and each session\'s cost?',
+    detail: 'Claude Code only shares these with its status line. Deskling adds a few lines in front of your status line ' +
+      `command in ${CLAUDE_SETTINGS}: they pass the same data to Deskling on 127.0.0.1 and then run your own command ` +
+      'unchanged, so your status line looks the same. Your original is kept and put back when you turn this off.\n\n' +
+      'Turn it off any time in the tray menu ("Show quota and cost").',
+  })
+  if (response === 0) config.set({ statusline: true })
+}
+
 function statusText() {
   const v = store?.view, c = config.get()
   if (hotkeyError) return hotkeyError
@@ -113,7 +144,8 @@ function connect() {
 }
 
 // What the renderer needs from config, plus the full-screen mute.
-const rendererConfig = c => ({ sound: c.sound, shape: c.shape, corner: c.corner, mascot: c.mascot, idleOpacity: c.idleOpacity, tucked: c.tucked, muted: muted() })
+const rendererConfig = c => ({ sound: c.sound, shape: c.shape, corner: c.corner, mascot: c.mascot, idleOpacity: c.idleOpacity, tucked: c.tucked, muted: muted(),
+  offerStatusline: c.localHooks === true && c.statusline !== true })
 
 function applyHotkey(c) {
   globalShortcut.unregisterAll()
@@ -230,7 +262,7 @@ function start() {
       widget.send('view', lastView || store.view)
     },
   })
-  tray = createTray({ config, widget, log, statusText, onQuit: () => app.quit() })
+  tray = createTray({ config, widget, log, statusText, onQuit: () => app.quit(), askStatusline })
 
   ipcMain.on('list', (e, open) => {
     if (!fromApp(e)) return
@@ -244,6 +276,7 @@ function start() {
     else log(`refused to open ${String(url).slice(0, 200)}`)
   })
   ipcMain.on('open-session', (e, id) => { if (fromApp(e)) openSession(id) })
+  ipcMain.on('setup-statusline', e => { if (fromApp(e)) askStatusline() })
   // Allow / Deny from the list: answers the held hook request, if it is still held.
   ipcMain.on('answer', (e, holdId, session, allow) => {
     if (!fromApp(e) || !hooks) return
@@ -264,6 +297,7 @@ function start() {
     if (c.hotkey !== prev.hotkey) applyHotkey(c)
     if (c.hideInFullscreen !== prev.hideInFullscreen) applyFullscreen(c)
     if (c.localHooks !== prev.localHooks) applyLocalHooks(c)
+    if (c.statusline !== prev.statusline || c.localHooks !== prev.localHooks) applyStatusline(c)
     if (c.relayUrl !== prev.relayUrl || config.token() !== prevToken) { prevToken = config.token(); connect() }
     if (c.autostart !== prev.autostart) applyAutostart(c)
     prev = c
@@ -293,8 +327,14 @@ function start() {
     holdPermission: () => config.get().answerPermissions && config.get().localHooks === true,
     holdMs: config.get().holdSeconds * 1000,
     onDone: (holdId, session) => local.dropAsk(session, holdId),
+    onStatusline: p => {
+      local.statusline(readStatusline(p))
+      const q = limitsFrom(p, Date.now())
+      if (q) store.dispatch({ type: 'quota', data: q })
+    },
   })
   applyLocalHooks(config.get())
+  applyStatusline(config.get())
   if (config.get().localHooks === null) askLocalHooks()
   watchLimits({ file: join(homedir(), '.claude', 'limits.json'), log, onQuota: q => store.dispatch({ type: 'quota', data: q }) })
   connect()

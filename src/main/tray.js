@@ -14,7 +14,7 @@ export function icon(grey = false, mascot = 'shiba') {
   return img
 }
 
-export function createTray({ config, widget, log, statusText, onQuit }) {
+export function createTray({ config, widget, log, statusText, onQuit, askStatusline }) {
   const tray = new Tray(icon(true, config.get().mascot))
   tray.setToolTip('Deskling')
   let grey = true, shown = config.get().mascot
@@ -55,6 +55,8 @@ export function createTray({ config, widget, log, statusText, onQuit }) {
         ? { label: 'Show again', click: () => widget.show() }
         : { label: 'Hide for 1 hour', click: () => widget.hideFor(3_600_000) },
       { label: 'Watch Claude Code on this PC', type: 'checkbox', checked: c.localHooks === true, click: i => config.set({ localHooks: i.checked }) },
+      { label: 'Show quota and cost', type: 'checkbox', checked: c.statusline === true, enabled: c.localHooks === true,
+        click: i => (i.checked ? askStatusline() : config.set({ statusline: false })) },
       { label: 'Answer permission prompts here', type: 'checkbox', checked: c.answerPermissions, enabled: c.localHooks === true, click: i => config.set({ answerPermissions: i.checked }) },
       { label: 'Hide in full screen (video, slides)', type: 'checkbox', checked: c.hideInFullscreen, click: i => config.set({ hideInFullscreen: i.checked }) },
       { label: 'Hide from screen capture', type: 'checkbox', checked: c.hideFromCapture, click: i => config.set({ hideFromCapture: i.checked }) },

@@ -15,12 +15,12 @@ export const EVENTS = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'Subage
 // Earlier marks count as ours, so they get replaced: deskling-v1, and cc-dog (this app's earlier name).
 const ours = h => ['deskling-v1', MARK].includes((h.headers || {})['X-Deskling-Mark']) || (h.headers || {})['X-CcDog-Mark'] === 'cc-dog-v1'
 
-function read(file) {
+export function readSettings(file) {
   if (!existsSync(file)) return {}
   return JSON.parse(readFileSync(file, 'utf8'))       // a broken settings.json throws: never overwrite it
 }
 
-function write(file, d) {
+export function writeSettings(file, d) {
   mkdirSync(dirname(file), { recursive: true })
   if (existsSync(file) && !existsSync(file + '.deskling-backup')) copyFileSync(file, file + '.deskling-backup')
   writeFileSync(file + '.tmp', JSON.stringify(d, null, 2) + '\n')
@@ -39,22 +39,22 @@ function strip(d) {
 }
 
 export function installHooks(file, { url, token }) {
-  const d = strip(read(file))
+  const d = strip(readSettings(file))
   d.hooks ??= {}
   for (const ev of EVENTS) {
     (d.hooks[ev] ??= []).push({ hooks: [{ type: 'http', url, timeout: TIMEOUT[ev] || 5, headers: { 'X-Deskling-Token': token, 'X-Deskling-Mark': MARK } }] })
   }
-  write(file, d)
+  writeSettings(file, d)
 }
 
 export function removeHooks(file) {
   if (!existsSync(file)) return
-  write(file, strip(read(file)))
+  writeSettings(file, strip(readSettings(file)))
 }
 
 export function hooksInstalled(file, url) {
   try {
-    const hooks = read(file).hooks || {}
+    const hooks = readSettings(file).hooks || {}
     return EVENTS.every(ev => (hooks[ev] || []).some(e => (e.hooks || []).some(h => (h.headers || {})['X-Deskling-Mark'] === MARK && h.url === url)))
   } catch { return false }
 }

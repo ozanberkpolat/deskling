@@ -31,7 +31,7 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
     let r = S.get(id)
     if (!r) {
       const project = String(p.cwd || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || null
-      r = { slim: { id, project, tmux: null, title: null, state: 'idle', since: t / 1000, last: null, ctx: null, ask: null, host: 'laptop' },
+      r = { slim: { id, project, tmux: null, title: null, state: 'idle', since: t / 1000, last: null, ctx: null, ask: null, cost: null, host: 'laptop' },
             updated: t, turnStarted: null, agents: new Set() }
       S.set(id, r)
     }
@@ -126,5 +126,15 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
     onSession(slimOf(r))
   }
 
-  return { hook, decay, answered, dropAsk, get size() { return S.size } }
+  // A status line payload (readStatusline): the session's running cost and context use. Sessions we
+  // have not heard a hook from are left out: the list only shows what the hooks report.
+  function statusline({ session, cost, ctx }) {
+    const r = S.get(session)
+    if (!r || (r.slim.cost === cost && r.slim.ctx === ctx)) return
+    r.slim.cost = cost
+    r.slim.ctx = ctx
+    onSession(slimOf(r))
+  }
+
+  return { hook, decay, answered, dropAsk, statusline, get size() { return S.size } }
 }

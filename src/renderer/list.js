@@ -19,13 +19,18 @@ export function rowParts(r, now = Date.now()) {
   if (r.host) top.append(el('span', 'host', r.host))
   top.append(el('span', 'state', r.k === 'pc' ? r.state : stateLabel(r)))
   if (r.ctx >= CTX_WARN) top.append(el('span', 'ctx', `ctx ${r.ctx}%`))
+  if (typeof r.cost === 'number') {
+    const c = el('span', 'cost', costLabel(r.cost))
+    c.title = 'Cost at API list prices so far. On a Claude plan this is not what you pay.'
+    top.append(c)
+  }
   top.append(el('span', 'ago', ago(r.at, now)))
   const parts = [top, el('div', 'title', r.title || '')]
   if (r.detail) parts.push(el('div', 'detail', r.detail))
   return parts
 }
 
-export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer } = {}) {
+export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer, offerStatusline } = {}) {
   const frag = document.createDocumentFragment()
   let group = null
   for (const r of vm.rows) {
@@ -44,6 +49,12 @@ export function renderList(root, vm, { now = Date.now(), openUrl, openSession, a
   if (vm.more) frag.append(el('div', 'more', `+${vm.more} more`))
   if (!vm.rows.length) frag.append(el('div', 'empty', vm.connected ? 'Nothing running right now.' : 'Waiting for the relay…'))
   if (vm.quota) frag.append(quotaRow(vm.quota, now))
+  else if (offerStatusline) {
+    const b = el('button', 'offer', 'Show your plan quota and session costs…')
+    b.type = 'button'
+    b.addEventListener('click', offerStatusline)
+    frag.append(b)
+  }
   const st = statusLine(vm)
   if (st) frag.append(el('div', 'status', st))
   root.replaceChildren(frag)
@@ -96,6 +107,8 @@ function askParts(r, answer) {
   box.append(yes, no, el('span', 'hint', 'or answer in the terminal'))
   return box
 }
+
+export const costLabel = usd => usd < 0.01 ? '<$0.01' : usd >= 100 ? `$${Math.round(usd)}` : `$${usd.toFixed(2)}`
 
 function stateLabel(r) {
   if (r.state === 'working' && r.agents) return `working · ${r.agents} agent${r.agents > 1 ? 's' : ''}`

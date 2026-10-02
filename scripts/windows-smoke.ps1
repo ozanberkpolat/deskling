@@ -41,7 +41,7 @@ foreach ($k in $run, $uninst) { if (-not (Test-Path $k)) { New-Item -Path $k -Fo
 
 # ── 1. an older cc-dog install, with settings and hooks, and one hook of the user's own ──
 New-Item -ItemType Directory -Force $old, (Join-Path $programs 'cc-dog'), (Split-Path $settings) | Out-Null
-'{"corner":"bl","localHooks":true,"relayUrl":"","hideFromCapture":false,"hideInFullscreen":false,"holdSeconds":20}' | Set-Content (Join-Path $old 'config.json')
+'{"corner":"bl","localHooks":true,"relayUrl":"","hideFromCapture":false,"hideInFullscreen":false,"holdSeconds":20,"statusline":true}' | Set-Content (Join-Path $old 'config.json')
 'legacy-hook-token-0123456789abcdef' | Set-Content -NoNewline (Join-Path $old 'hook-token')
 '' | Set-Content (Join-Path $programs 'cc-dog\cc-dog.exe')
 '' | Set-Content (Join-Path $startMenu 'cc-dog.lnk')
@@ -85,6 +85,14 @@ Start-Sleep 4
 Shot '2-session-waiting'
 Check (Running) 'still running after hooks'
 
+# ── 3a. the status line wrapper: quota and cost through Git Bash, as Claude Code runs it ──
+$sl = (Get-Content $settings -Raw | ConvertFrom-Json).statusLine
+Check ($sl.command -match 'deskling-statusline v1') 'status line wrapper installed (statusline: true)'
+$payload = '{"session_id":"smoke1","cost":{"total_cost_usd":0.5},"context_window":{"used_percentage":12},"rate_limits":{"five_hour":{"used_percentage":40}}}'
+$payload | & 'C:\Program Files\Git\bin\bash.exe' -c $sl.command | Out-Null
+Check (Until { Test-Path (Join-Path $env:USERPROFILE '.claude\limits.json') } 10) 'the wrapper writes limits.json (quota ring)'
+Start-Sleep 2
+
 # ── 3b. a permission prompt answered from the list ──
 # A real UI click: open the list with the hotkey, press "Allow" through UI Automation (Chromium
 # exposes the page's buttons to UIA). The held hook request must get the allow decision back.
@@ -118,6 +126,7 @@ Stop-Process -Name deskling -Force; Start-Sleep 2
 & (Join-Path $programs 'Deskling\deskling.exe') --remove-hooks | Out-Null
 Check (Until { (Ours).Count -eq 0 }) '--remove-hooks takes our hooks out'
 Check ((Theirs).Count -eq 1) "--remove-hooks keeps the user's hook"
+Check ($null -eq (Get-Content $settings -Raw | ConvertFrom-Json).statusLine) '--remove-hooks puts the status line back (there was none)'
 Remove-Item -Recurse -Force $appdata, $old
 Start-Process (Join-Path $programs 'Deskling\deskling.exe')
 Start-Sleep 8
