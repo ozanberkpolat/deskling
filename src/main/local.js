@@ -23,14 +23,15 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
   // title = the first typed (non-slash) prompt, else the folder name
   function slimOf(r) { return { ...r.slim, title: r.title || r.slim.project, agentsActive: r.agents.size } }
 
-  function hook(p) {
+  // meta.holdId: the hook server is holding this PermissionRequest for an answer from the widget
+  function hook(p, meta = {}) {
     const id = p?.session_id
     if (!id || typeof id !== 'string') return
     const t = now()
     let r = S.get(id)
     if (!r) {
       const project = String(p.cwd || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || null
-      r = { slim: { id, project, tmux: null, title: null, state: 'idle', since: t / 1000, last: null, ctx: null, host: 'laptop' },
+      r = { slim: { id, project, tmux: null, title: null, state: 'idle', since: t / 1000, last: null, ctx: null, ask: null, host: 'laptop' },
             updated: t, turnStarted: null, agents: new Set() }
       S.set(id, r)
     }
@@ -38,6 +39,8 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
     const s = r.slim
     const set = state => { if (s.state !== state) { s.state = state; s.since = t / 1000 } }
     const ev = p.hook_event_name, aid = p.agent_id
+    // any event but another question means the pending one was answered (in the terminal)
+    if (ev !== 'PermissionRequest' && ev !== 'Notification') s.ask = null
     switch (ev) {
       case 'SessionStart': set('idle'); break
       case 'UserPromptSubmit': {
@@ -55,7 +58,13 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
         break
       case 'SubagentStart': if (aid) r.agents.add(aid); break
       case 'SubagentStop': if (aid) r.agents.delete(aid); break
-      case 'PermissionRequest': set('blocked'); break
+      case 'PermissionRequest': {
+        set('blocked')
+        const text = cut(`${p.tool_name || '?'}: ${summarize(p.tool_input)}`, 120)
+        s.last = text
+        s.ask = meta.holdId ? { id: meta.holdId, text } : null
+        break
+      }
       case 'Notification': {
         // a subagent's notice is not a question for you (its permission requests still are)
         if (aid) return
@@ -99,5 +108,23 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
     }
   }
 
-  return { hook, decay, get size() { return S.size } }
+  // The widget answered a held request: Claude Code carries on (it runs the tool, or goes on after a no).
+  function answered(id, holdId) {
+    const r = S.get(id)
+    if (!r || r.slim.ask?.id !== holdId) return
+    r.slim.ask = null
+    r.slim.state = 'working'; r.slim.since = now() / 1000
+    onSession(slimOf(r))
+  }
+
+  // A held request ended without the widget (timeout, Claude Code gave up): the buttons go, the
+  // terminal prompt is still there, so the session stays blocked.
+  function dropAsk(id, holdId) {
+    const r = S.get(id)
+    if (!r || r.slim.ask?.id !== holdId) return
+    r.slim.ask = null
+    onSession(slimOf(r))
+  }
+
+  return { hook, decay, answered, dropAsk, get size() { return S.size } }
 }

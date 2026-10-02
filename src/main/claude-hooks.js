@@ -6,12 +6,14 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
-export const MARK = 'deskling-v1'
+// v2: PermissionRequest waits up to 120 s, so the list can answer it. A v1 install is replaced on start.
+export const MARK = 'deskling-v2'
+export const TIMEOUT = { PermissionRequest: 120 }        // seconds; every other event: 5
 export const EVENTS = ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'SubagentStart', 'SubagentStop',
   'Stop', 'StopFailure', 'Notification', 'PermissionRequest', 'SessionEnd']
 
-// cc-dog (this app's earlier name) marked its hooks X-CcDog-Mark: those count as ours, so they get replaced.
-const ours = h => (h.headers || {})['X-Deskling-Mark'] === MARK || (h.headers || {})['X-CcDog-Mark'] === 'cc-dog-v1'
+// Earlier marks count as ours, so they get replaced: deskling-v1, and cc-dog (this app's earlier name).
+const ours = h => ['deskling-v1', MARK].includes((h.headers || {})['X-Deskling-Mark']) || (h.headers || {})['X-CcDog-Mark'] === 'cc-dog-v1'
 
 function read(file) {
   if (!existsSync(file)) return {}
@@ -40,7 +42,7 @@ export function installHooks(file, { url, token }) {
   const d = strip(read(file))
   d.hooks ??= {}
   for (const ev of EVENTS) {
-    (d.hooks[ev] ??= []).push({ hooks: [{ type: 'http', url, timeout: 5, headers: { 'X-Deskling-Token': token, 'X-Deskling-Mark': MARK } }] })
+    (d.hooks[ev] ??= []).push({ hooks: [{ type: 'http', url, timeout: TIMEOUT[ev] || 5, headers: { 'X-Deskling-Token': token, 'X-Deskling-Mark': MARK } }] })
   }
   write(file, d)
 }

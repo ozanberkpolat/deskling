@@ -41,7 +41,7 @@ foreach ($k in $run, $uninst) { if (-not (Test-Path $k)) { New-Item -Path $k -Fo
 
 # ── 1. an older cc-dog install, with settings and hooks, and one hook of the user's own ──
 New-Item -ItemType Directory -Force $old, (Join-Path $programs 'cc-dog'), (Split-Path $settings) | Out-Null
-'{"corner":"bl","localHooks":true,"relayUrl":"","hideFromCapture":false,"hideInFullscreen":false}' | Set-Content (Join-Path $old 'config.json')
+'{"corner":"bl","localHooks":true,"relayUrl":"","hideFromCapture":false,"hideInFullscreen":false,"holdSeconds":20}' | Set-Content (Join-Path $old 'config.json')
 'legacy-hook-token-0123456789abcdef' | Set-Content -NoNewline (Join-Path $old 'hook-token')
 '' | Set-Content (Join-Path $programs 'cc-dog\cc-dog.exe')
 '' | Set-Content (Join-Path $startMenu 'cc-dog.lnk')
@@ -84,6 +84,34 @@ Check ((& $post $tok ($s -replace '%E%', 'SessionStart')).StatusCode -eq 200) 'h
 Start-Sleep 4
 Shot '2-session-waiting'
 Check (Running) 'still running after hooks'
+
+# ── 3b. a permission prompt answered from the list ──
+# A real UI click: open the list with the hotkey, press "Allow" through UI Automation (Chromium
+# exposes the page's buttons to UIA). The held hook request must get the allow decision back.
+function Ask($session) {
+  Start-Job -ArgumentList $tok, $session -ScriptBlock {
+    param($tok, $session)
+    $b = "{""session_id"":""$session"",""cwd"":""C:\\work\\my-app"",""hook_event_name"":""PermissionRequest"",""tool_name"":""Bash"",""tool_input"":{""command"":""npm install zod""}}"
+    (Invoke-WebRequest -Uri 'http://127.0.0.1:8033/hook' -Method Post -Headers @{ 'X-Deskling-Token' = $tok } -Body $b -ContentType 'application/json' -TimeoutSec 120 -UseBasicParsing).Content
+  }
+}
+$job = Ask 'perm1'
+Start-Sleep 3
+(New-Object -ComObject WScript.Shell).SendKeys('^%d')          # Ctrl+Alt+D: the list
+Start-Sleep 2
+Shot '2b-permission-in-list'
+$pressed = powershell.exe -NoProfile -Command @'
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+$cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Allow')
+$hits = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
+foreach ($e in $hits) { $p = $null; if ($e.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$p)) { $p.Invoke(); 'pressed'; break } }
+'@
+Write-Host "allow button: $pressed"
+$answer = Receive-Job $job -Wait -AutoRemoveJob
+Check ($answer -match '"behavior":"allow"') 'Allow in the list answers the held prompt with allow'
+$job = Ask 'perm2'                                            # nobody answers this one
+$answer = Receive-Job $job -Wait -AutoRemoveJob
+Check ($answer -eq '{}') 'an unanswered prompt gets {} after the hold (never an automatic allow)'
 
 # ── 4. a brand-new user: the first-start question, before anything is written ──
 Stop-Process -Name deskling -Force; Start-Sleep 2

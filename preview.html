@@ -120,6 +120,7 @@ window.deskling = {
   openSession: id => log(`openSession → https://portal.example.com/cc/#t=${encodeURIComponent(st.sessions[id]?.tmux || '?')}`),
   setInteractive: () => {},
   openUrl: url => window.open(url, '_blank', 'noopener'),
+  answer: (holdId, id, allow) => { log(`${allow ? 'allowed' : 'denied'} from the list (${holdId})`); one('working', allow ? 'Bash: docker compose up -d portal' : 'denied, Claude carries on') },
 }
 let cfg = { sound: { enabled: true, volume: 0.6 }, shape: 'round', corner: 'tr', mascot: 'shiba', tucked: false, muted: false }
 window.preview = { dispatch, log, cfg: () => cfg, pet: () => { window.dispatchEvent(new CustomEvent('cc-pet')); window.deskling.ack() }, reset: () => { st = initialState(); skew = 0 }, get state() { return st },
@@ -165,7 +166,7 @@ const scen = [
   }],
   ['Start working', 'one session works: the dog types on its laptop, blue 1.', () => one('working', 'Edit: dog.js')],
   ['3 working', 'three sessions work: blue 3, the dog types faster.', () => base.forEach(s => dispatch({ type: 'session', data: { ...s, state: 'working', since: now() } }))],
-  ['Asks permission', 'a session needs approval: radar rings, orange ring, orange 1, the dog sits up and barks once.', () => one('blocked', 'Bash: docker compose up -d portal')],
+  ['Asks permission', 'a session needs approval: radar rings, orange ring, orange 1, the dog sits up and barks once. Open the list: Allow / Deny under the command.', () => dispatch({ type: 'session', data: { ...S('1', 'my-app', 'login fix', 'blocked', 'Bash: docker compose up -d portal'), ask: { id: 'h1', text: 'Bash: docker compose up -d portal' } } })],
   ['+5 min still waiting', 'nothing answered for 5 minutes: one more bark (only while something waits; once per wait).', () => window.preview.advance(5 * 60_000 + 15_000)],
   ['Answered', 'approval given: radar stops, back to typing.', () => one('working', 'Bash: docker compose up -d portal')],
   ['Turn finishes', 'the turn ends: the dog jumps with sparkles, then wags; green 1 until you open the list (or 30 min pass).', () => one('done', 'finished in 212s')],

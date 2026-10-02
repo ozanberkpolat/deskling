@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('deskling', {
   setInteractive: v => ipcRenderer.send('interactive', !!v),
   openUrl: url => ipcRenderer.send('open-url', String(url)),
   openSession: id => ipcRenderer.send('open-session', String(id)),
+  answer: (holdId, session, allow) => ipcRenderer.send('answer', String(holdId), String(session), allow === true),
   showMenu: () => ipcRenderer.send('menu'),
   ack: () => ipcRenderer.send('ack'),
   dragStart: () => ipcRenderer.send('drag-start'),

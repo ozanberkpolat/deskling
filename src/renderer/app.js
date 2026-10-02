@@ -81,7 +81,7 @@ bridge.onFx(({ fx }) => {
   if (fx === 'yawn') dog.react('yawn')
 })
 
-function draw() { if (vm) renderList(list, vm, { openUrl: bridge.openUrl, openSession: bridge.openSession }) }
+function draw() { if (vm) renderList(list, vm, { openUrl: bridge.openUrl, openSession: bridge.openSession, answer: bridge.answer }) }
 
 let clock = null, openedAt = 0
 function setOpen(v) {

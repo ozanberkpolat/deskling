@@ -64,7 +64,7 @@ function serveApp() {
 }
 
 let widget, store, tray, source, fullscreen
-let fsMuted = false, locked = false, hotkeyError = '', local = null
+let fsMuted = false, locked = false, hotkeyError = '', local = null, hooks = null
 // No sound while a full-screen app is in front, during quiet hours, or while the screen is locked.
 const quiet = () => isQuiet(new Date(), config.get().quietHours)
 const muted = () => fsMuted || locked || quiet()
@@ -161,6 +161,7 @@ async function askLocalHooks() {
     message: 'Watch Claude Code on this PC?',
     detail: `Deskling adds ${EVENTS.length} small hooks to ${CLAUDE_SETTINGS} so Claude Code tells it when a session ` +
       `works, finishes or waits for you. They only talk to Deskling on 127.0.0.1:${config.get().hookPort}. ` +
+      'When a session asks for permission you can also answer it from Deskling\'s list (Allow / Deny), or in the terminal as always. ' +
       'Your other settings stay as they are, and the file is backed up once (settings.json.deskling-backup).\n\n' +
       'You can turn this off any time in the tray menu ("Watch Claude Code on this PC"), which takes the hooks out again.',
   })
@@ -243,6 +244,13 @@ function start() {
     else log(`refused to open ${String(url).slice(0, 200)}`)
   })
   ipcMain.on('open-session', (e, id) => { if (fromApp(e)) openSession(id) })
+  // Allow / Deny from the list: answers the held hook request, if it is still held.
+  ipcMain.on('answer', (e, holdId, session, allow) => {
+    if (!fromApp(e) || !hooks) return
+    const s = hooks.answer(String(holdId), allow === true)
+    if (s) { local.answered(s, String(holdId)); log(`permission ${allow === true ? 'allowed' : 'denied'} from the list`) }
+    else log('answer came too late: that prompt was already settled')
+  })
   ipcMain.on('menu', e => { if (fromApp(e)) tray.popup() })
   ipcMain.on('ack', e => { if (fromApp(e)) store.dispatch({ type: 'listOpened' }) })      // petted
   ipcMain.on('drag-start', e => { if (fromApp(e)) widget.dragStart() })
@@ -279,7 +287,13 @@ function start() {
     onGone: id => store.dispatch({ type: 'gone', data: { id } }),
   })
   setInterval(() => local.decay(), 60_000)
-  startHookServer({ port: config.get().hookPort, token: hookToken(), onHook: p => local.hook(p), log })
+  hooks = startHookServer({
+    port: config.get().hookPort, token: hookToken(), log,
+    onHook: (p, meta) => local.hook(p, meta),
+    holdPermission: () => config.get().answerPermissions && config.get().localHooks === true,
+    holdMs: config.get().holdSeconds * 1000,
+    onDone: (holdId, session) => local.dropAsk(session, holdId),
+  })
   applyLocalHooks(config.get())
   if (config.get().localHooks === null) askLocalHooks()
   watchLimits({ file: join(homedir(), '.claude', 'limits.json'), log, onQuota: q => store.dispatch({ type: 'quota', data: q }) })

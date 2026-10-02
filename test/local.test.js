@@ -80,13 +80,23 @@ test('claude-hooks: adds ours, keeps everyone else\'s, idempotent, removable, ba
     installHooks(f, opt)
     const after = JSON.parse(readFileSync(f, 'utf8'))
     assert.equal(after.hooks.Stop.length, 1)
-    assert.equal(after.hooks.Stop[0].hooks[0].headers['X-Deskling-Mark'], 'deskling-v1')
+    assert.equal(after.hooks.Stop[0].hooks[0].headers['X-Deskling-Mark'], 'deskling-v2')
+    // a v1 install (all 5 s timeouts) is not "installed" for v2, and is replaced, not doubled
+    const v1 = { hooks: { PermissionRequest: [{ hooks: [{ type: 'http', url: opt.url, timeout: 5, headers: { 'X-Deskling-Token': 'x', 'X-Deskling-Mark': 'deskling-v1' } }] }] } }
+    writeFileSync(f, JSON.stringify(v1))
+    assert.equal(hooksInstalled(f, opt.url), false)
+    installHooks(f, opt)
+    const v2 = JSON.parse(readFileSync(f, 'utf8'))
+    assert.equal(v2.hooks.PermissionRequest.length, 1)
+    assert.equal(v2.hooks.PermissionRequest[0].hooks[0].timeout, 120)              // long enough to answer from the list
+    assert.equal(v2.hooks.Stop[0].hooks[0].timeout, 5)
   } finally { rmSync(d, { recursive: true }) }
 })
 
 test('hookserver: token required, /hook only, answers {} at once', async () => {
   const got = []
-  const srv = startHookServer({ port: 0, token: 'secret-token', onHook: p => got.push(p), log: () => {} })
+  const hs = startHookServer({ port: 0, token: 'secret-token', onHook: p => got.push(p), log: () => {} })
+  const srv = hs.srv
   await new Promise(r => srv.once('listening', r))
   const url = `http://127.0.0.1:${srv.address().port}`
   const send = (path, headers, body) => fetch(url + path, { headers, body, method: 'PUT' })     // eslint: any verb
@@ -97,7 +107,7 @@ test('hookserver: token required, /hook only, answers {} at once', async () => {
   assert.equal(r.status, 200)
   assert.equal(await r.text(), '{}')
   assert.deepEqual(got, [{ session_id: 'a' }])
-  srv.close()
+  hs.close()
 })
 
 test('quota: limits.json in both shapes, weekly alias, ts or mtime, junk ignored', () => {
@@ -145,4 +155,75 @@ test('quiet hours: plain and across midnight', () => {
   assert.equal(isQuiet(at(12, 45), day), true)
   assert.equal(isQuiet(at(13, 30), day), false)
   assert.equal(isQuiet(at(3), null), false)
+})
+
+test('hookserver: a permission prompt is held for the list; allow, deny, timeout, terminal first', async () => {
+  const got = [], done = []
+  let hold = true
+  const hs = startHookServer({ port: 0, token: 'secret-token', log: () => {}, holdMs: 300,
+    holdPermission: () => hold, onHook: (p, meta) => got.push({ ev: p.hook_event_name, meta }), onDone: (id, s) => done.push([id, s]) })
+  await new Promise(r => hs.srv.once('listening', r))
+  const url = `http://127.0.0.1:${hs.srv.address().port}/hook`
+  const send = body => fetch(url, { method: 'PUT', headers: { 'X-Deskling-Token': 'secret-token' }, body: JSON.stringify(body) }).then(r => r.json())
+  const ask = (s = 'a') => send({ session_id: s, hook_event_name: 'PermissionRequest', tool_name: 'Bash', tool_input: { command: 'npm i zod' } })
+  const until = async f => { for (let i = 0; i < 100 && !f(); i++) await new Promise(r => setTimeout(r, 10)) }
+  try {
+    // allow
+    let reply = ask()
+    await until(() => hs.held === 1)
+    const id = got.at(-1).meta.holdId
+    assert.ok(id)
+    assert.equal(hs.answer(id, true), 'a')
+    assert.deepEqual(await reply, { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow' } } })
+    assert.equal(hs.answer(id, true), null)                       // answered once only
+    // deny
+    reply = ask()
+    await until(() => hs.held === 1)
+    hs.answer(got.at(-1).meta.holdId, false)
+    assert.equal((await reply).hookSpecificOutput.decision.behavior, 'deny')
+    // nobody answers: {} after holdMs, never an allow
+    reply = ask()
+    assert.deepEqual(await reply, {})
+    assert.equal(done.length, 1)
+    // the terminal answered first: the next event from that session releases it with {}
+    reply = ask('b')
+    await until(() => hs.held === 1)
+    assert.deepEqual(await send({ session_id: 'b', hook_event_name: 'PreToolUse' }), {})
+    assert.deepEqual(await reply, {})
+    assert.equal(hs.held, 0)
+    // a Notification from the same session does not release it
+    reply = ask('c')
+    await until(() => hs.held === 1)
+    await send({ session_id: 'c', hook_event_name: 'Notification', message: 'Claude needs your permission' })
+    assert.equal(hs.held, 1)
+    hs.answer(got.at(-2).meta.holdId, true)                       // the question, before the notice
+    await reply
+    // switched off: answered at once
+    hold = false
+    assert.deepEqual(await ask(), {})
+  } finally { hs.close() }
+})
+
+test('local: a held prompt puts Allow/Deny on the session until it is settled', () => {
+  const out = []
+  const l = createLocal({ onSession: s => out.push(structuredClone(s)), onGone: () => {} })
+  l.hook(P('PermissionRequest', { tool_name: 'Bash', tool_input: { command: 'npm install zod' } }), { holdId: 'h1' })
+  assert.deepEqual(out.at(-1).ask, { id: 'h1', text: 'Bash: npm install zod' })
+  assert.equal(out.at(-1).state, 'blocked')
+  l.hook(P('Notification', { message: 'Claude needs your permission' }))
+  assert.ok(out.at(-1).ask, 'a notice keeps the question')
+  l.answered('s1', 'other')                                  // a stale id changes nothing
+  assert.ok(out.at(-1).ask)
+  l.answered('s1', 'h1')
+  assert.equal(out.at(-1).ask, null)
+  assert.equal(out.at(-1).state, 'working')
+  l.hook(P('PermissionRequest', { tool_name: 'Edit', tool_input: { file_path: 'a.js' } }), { holdId: 'h2' })
+  l.dropAsk('s1', 'h2')                                       // timed out: buttons go, still blocked
+  assert.equal(out.at(-1).ask, null)
+  assert.equal(out.at(-1).state, 'blocked')
+  l.hook(P('PermissionRequest', { tool_name: 'Edit', tool_input: { file_path: 'b.js' } }))   // not held: no buttons
+  assert.equal(out.at(-1).ask, null)
+  l.hook(P('PermissionRequest', { tool_name: 'Edit', tool_input: { file_path: 'c.js' } }), { holdId: 'h3' })
+  l.hook(P('PreToolUse', { tool_name: 'Edit', tool_input: { file_path: 'c.js' } }))       // answered in the terminal
+  assert.equal(out.at(-1).ask, null)
 })

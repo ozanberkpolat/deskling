@@ -19,6 +19,8 @@ export const DEFAULTS = {
   ccUrl: '',                  // with a relay: web terminal a remote session's row opens (<ccUrl>#t=<tmux>)
   linkHosts: [],              // with a relay: extra https hosts its items may link to
   localHooks: null,           // watch this machine's Claude Code (hooks in ~/.claude/settings.json); null = ask on first start
+  answerPermissions: true,    // Allow / Deny in the list while a session asks for permission (the terminal can still answer)
+  holdSeconds: 90,            // how long a permission prompt waits for the list before the terminal alone decides
   hookPort: 8033,             // 127.0.0.1 only
   sound: { enabled: true, volume: 0.6 },
   finishedTtlMin: 30,
@@ -50,7 +52,8 @@ export function normalize(raw = {}) {
   c.sound = { enabled: c.sound?.enabled !== false, volume: clamp(c.sound?.volume, 0, 1, DEFAULTS.sound.volume) }
   c.finishedTtlMin = clamp(c.finishedTtlMin, 1, 24 * 60, DEFAULTS.finishedTtlMin)
   c.localHooks = typeof c.localHooks === 'boolean' ? c.localHooks : null
-  for (const k of ['hideFromCapture', 'hideInFullscreen', 'autostart', 'disableGpu', 'tucked']) c[k] = typeof c[k] === 'boolean' ? c[k] : DEFAULTS[k]
+  c.holdSeconds = Math.round(clamp(c.holdSeconds, 5, 110, DEFAULTS.holdSeconds))   // the hook itself times out at 120 s
+  for (const k of ['hideFromCapture', 'hideInFullscreen', 'autostart', 'disableGpu', 'tucked', 'answerPermissions']) c[k] = typeof c[k] === 'boolean' ? c[k] : DEFAULTS[k]
   return c
 }
 

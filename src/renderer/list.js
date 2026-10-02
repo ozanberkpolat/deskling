@@ -25,17 +25,20 @@ export function rowParts(r, now = Date.now()) {
   return parts
 }
 
-export function renderList(root, vm, { now = Date.now(), openUrl, openSession } = {}) {
+export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer } = {}) {
   const frag = document.createDocumentFragment()
   let group = null
   for (const r of vm.rows) {
     if (r.group !== group) { group = r.group; frag.append(el('div', 'grp', LABEL[group])) }
     // Paperclip rows open their page; VPS cc rows open their terminal (main builds that URL);
     // a laptop session's terminal is already on this screen.
-    const click = r.k === 'pc' ? (r.url && (() => openUrl?.(r.url))) : (!r.host && openSession && (() => openSession(r.id)))
-    const row = el(click ? 'button' : 'div', `row g-${r.group} k-${r.k}${r.fresh ? ' fresh' : ''}`)
+    // A held permission prompt: the row holds two real buttons, so it is not a button itself.
+    const asking = r.ask && answer
+    const click = asking ? null : r.k === 'pc' ? (r.url && (() => openUrl?.(r.url))) : (!r.host && openSession && (() => openSession(r.id)))
+    const row = el(click ? 'button' : 'div', `row g-${r.group} k-${r.k}${r.fresh ? ' fresh' : ''}${asking ? ' asking' : ''}`)
     if (click) { row.type = 'button'; row.addEventListener('click', click) }
     row.append(...rowParts(r, now))
+    if (asking) row.append(askParts(r, answer))
     frag.append(row)
   }
   if (vm.more) frag.append(el('div', 'more', `+${vm.more} more`))
@@ -76,6 +79,22 @@ function quotaRow(q, now) {
   }
   if (q.stale) row.append(el('span', 'age', `Updated ${q.ageMin >= 120 ? Math.round(q.ageMin / 60) + ' hours' : q.ageMin + ' minutes'} ago`))
   return row
+}
+
+// "Allow" / "Deny" under the command. A click answers once; both buttons go quiet until the next view.
+function askParts(r, answer) {
+  const box = el('div', 'ask')
+  const yes = el('button', 'yes', 'Allow'), no = el('button', 'no', 'Deny')
+  for (const [b, allow] of [[yes, true], [no, false]]) {
+    b.type = 'button'
+    b.addEventListener('click', e => {
+      e.stopPropagation()
+      yes.disabled = no.disabled = true
+      answer(r.ask.id, r.id, allow)
+    })
+  }
+  box.append(yes, no, el('span', 'hint', 'or answer in the terminal'))
+  return box
 }
 
 function stateLabel(r) {
