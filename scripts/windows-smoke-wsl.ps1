@@ -81,7 +81,7 @@ Start-Sleep 4
 OpenList
 Shot '3-wsl-asks'
 Write-Host "allow: $(Press 'Allow')"
-$answer = Receive-Job $job -Wait -AutoRemoveJob
+$answer = Receive-Job $job -Wait; Remove-Job $job -Force -ErrorAction SilentlyContinue   # -AutoRemoveJob raced once ("child job")
 Write-Host "curl printed: $answer"
 Check ($answer -match '"behavior":"allow"') 'Allow in the list reaches Claude Code in WSL'
 
