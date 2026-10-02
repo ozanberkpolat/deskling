@@ -120,11 +120,22 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [smoke, smoke-msix]
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: deskling-setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: deskling-msix
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create '${{ github.ref_name }}' deskling-setup.exe --repo '${{ github.repository }}' --title "Deskling ${{ github.ref_name }}" --generate-notes
+        # deskling-store.msix is unsigned: it is only for the Microsoft Store submission (the Store signs it)
+        run: |
+          mv deskling.msix deskling-store.msix
+          gh release create '${{ github.ref_name }}' deskling-setup.exe deskling-store.msix --repo '${{ github.repository }}' --title "Deskling ${{ github.ref_name }}" --generate-notes `
+            --notes "Install: [Microsoft Store](https://apps.microsoft.com/detail/9nnsg351d4bq) or deskling-setup.exe. deskling-store.msix is the unsigned package for the Store submission, not for installing."
+

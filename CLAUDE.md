@@ -35,6 +35,11 @@ docs are in `README.md`; this file is for working on the code.
   installer on Windows, runs `scripts/windows-smoke.ps1` on a fresh runner (upgrade from cc-dog, hooks,
   the first-start question, uninstall; screenshots in the `smoke-results` artifact) and publishes
   only if that passed. "Run workflow" by hand does the same without publishing.
+- Microsoft Store update (manual by choice, 2026-10-02: Ozan's Partner Center account is an
+  individual live.com one, no Entra automation): the release carries `deskling-store.msix`
+  (unsigned; the Store signs it). Partner Center → Deskling: Desk Buddy → Update → Packages (remove
+  the old, add the new) → Store listing "What's new" (text from `store/listing.md`) → Submit. An
+  open hand-made draft is fine here, there is no automated publish to delete it.
 
 ## Website
 `https://obp.com.tr/deskling` lives in the obp.com.tr-site repo (`deskling/index.html`, design
