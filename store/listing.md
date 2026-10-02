@@ -41,10 +41,12 @@ Expected rating: 3+ / Everyone.
 > - Grey: nothing running. Blue: working. Orange: waiting for you. Green: finished. Red: a turn
 >   ended on an error.
 > - Click it for the list of sessions; double-click to pet it.
-> - Answer permission prompts from the list (Allow / Deny), or in the terminal as always.
+> - Answer permission prompts from the list (Allow / Deny), or in the terminal as always. With the
+>   list open, W / S pick a question, A allows and D denies.
+> - Works with Claude Code inside WSL too.
 > - Click a session to bring its terminal window forward.
-> - Optional: your plan quota as a ring and each session's cost so far, from Claude Code's own
->   status line.
+> - Optional: your plan quota as a ring, when you would hit the limit at your current pace, and each
+>   session's cost so far, from Claude Code's own status line.
 > - A settings window for everything.
 > - Drag it to any corner of any screen, or tuck it into the edge.
 > - Ten mascots: shiba, dragon, owl, robot, cat, frog, ghost, alien, rubber duck and cactus.
@@ -58,17 +60,20 @@ Expected rating: 3+ / Everyone.
 > Deskling is an independent project, not affiliated with Anthropic. Claude Code is a product of
 > Anthropic and is needed for Deskling to show anything.
 
-**What's new in this version** (1.1.0):
-> Answer permission prompts from the list with Allow / Deny. Click a session to bring its terminal
-> forward. Optional plan quota ring and per-session cost. A settings window. Ten mascots, with a
-> clearer alien and frog.
+**What's new in this version** (1.2.0):
+> Answer from the keyboard, WASD style: W / S pick a question, A allows, D denies. Claude Code inside
+> WSL shows up too. The quota line says when you would hit the limit at your current pace. Screen
+> reader labels, high contrast and reduced motion. Report a problem from the tray menu. Clicking a
+> session now brings its terminal forward reliably, also right after Deskling starts.
 
 **Product features** (one per line, max 20):
 > Shows what each Claude Code session on this PC is doing, at a glance
 > Calls you once when a session waits for your answer or a permission
-> Answer permission prompts from the widget (Allow / Deny)
+> Answer permission prompts from the widget (Allow / Deny), also from the keyboard (WASD)
+> Works with Claude Code in WSL
 > Click a session to bring its terminal to the front
-> Plan quota and per-session cost, from Claude Code's status line
+> Plan quota, pace and per-session cost, from Claude Code's status line
+> Screen reader labels, high contrast and reduced motion
 > A settings window for every option
 > Celebrates when a session finishes
 > Ten pixel-art mascots
@@ -96,7 +101,9 @@ Expected rating: 3+ / Everyone.
 > add or remove those hooks in %USERPROFILE%\.claude\settings.json, which it does only after the
 > user agrees on first start. It answers Claude Code's permission hooks with the user's own Allow or
 > Deny click, wraps the user's Claude Code status line command only if the user turns that on, and
-> uses a hidden PowerShell process to find a session's terminal window and bring it forward.
+> uses a hidden PowerShell process to find a session's terminal window and bring it forward. For
+> WSL distros the user ticks, it reads and writes Claude Code's settings inside that distro through
+> wsl.exe.
 
 **Notes for certification:**
 > Deskling shows the state of Claude Code sessions (a command-line tool from Anthropic) running on

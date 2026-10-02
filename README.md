@@ -58,6 +58,12 @@ Windows 10 and 11. A macOS version is planned.
 - **Drag** it anywhere; it snaps to the nearest corner of whichever screen you drop it on. Drop it
   past the edge to tuck it in, leaving a thin strip that slides out on hover.
 - **Ctrl+Alt+D** opens and closes the list from anywhere (change it in Settings).
+- **Keyboard, WASD style:** with the list open, **W / S** (or the arrow keys) pick a row, **A** allows
+  and **D** denies that row's question, **Enter** does what a click does, **Esc** closes. A and D only
+  work after you have picked a row with W / S, so typing into the list by mistake never answers a
+  prompt. The keys go by position, so they sit in the same place on any keyboard layout.
+- **Report a problem…** (tray menu or Settings) copies the diagnostics to your clipboard and opens a
+  short, prefilled GitHub issue in your browser; paste them in if you like.
 - **Tray icon** (or right-click the box): **Settings…** for everything (mascot, shape, corner, sound,
   quiet hours, timings, hotkey, the Claude Code options), plus quick switches.
 
@@ -65,6 +71,20 @@ It gets out of the way on its own: it hides and stays silent while a full-screen
 presentation is in front, it never makes a sound during quiet hours (20:00 to 08:00 by default) or
 while the screen is locked, and it hides itself from screen sharing and screenshots. While it is
 hidden, a session that waits or finishes shows up as a silent Windows notification instead.
+
+It works with a screen reader (the box, the list, the rows and Allow / Deny are labelled, and a new
+question is announced), follows Windows high contrast, and holds still when Windows is set to reduce
+animations.
+
+## Claude Code in WSL
+
+If Claude Code runs inside WSL, tick your distro under **Watch Claude Code in WSL** in Settings (the
+list also offers it once when it finds WSL). Deskling then adds the same hooks to that distro's
+`~/.claude/settings.json`, as `command` hooks that hand each notice to Windows' own `curl.exe`, which
+delivers it to Deskling on `127.0.0.1`. Nothing about WSL's networking or the firewall changes, and
+Allow / Deny works the same. Distros are read and written through `wsl.exe` only when you tick or untick
+them; unticking (or uninstalling the GitHub installer version) takes the hooks out again. Clicking a
+WSL session brings its terminal tab forward.
 
 ## What it changes on your machine
 
@@ -78,6 +98,7 @@ When you say yes on first start it:
   Allow / Deny); every other hook is answered at once.
 - listens on `127.0.0.1:8033` (loopback only) for those hooks. Every request must carry a random
   token that lives in `%APPDATA%\deskling\hook-token`.
+- only for WSL distros you tick: the same hooks in that distro's `~/.claude/settings.json` (above).
 - only if you turn on **Show quota and cost**: puts a few lines in front of your status line command
   (see below). Your own command keeps running unchanged, and is put back when you turn it off.
 
@@ -93,13 +114,15 @@ Deskling sends nothing anywhere. The only network traffic is between Claude Code
 `127.0.0.1`: hook notices coming in, and, when you press Allow or Deny, the answer going back to that
 same request. The window that draws the mascot has no network access at all (a strict Content
 Security Policy plus a request filter), and the app opens no links unless you configure a remote
-relay. There is no telemetry and no update check. Full policy:
+relay. The one exception is **Report a problem…**, which opens a GitHub issue page in your browser
+when you press it. There is no telemetry and no update check. Full policy:
 [obp.com.tr/deskling/privacy](https://obp.com.tr/deskling/privacy).
 
 ## Quota and cost (optional)
 
 Deskling can draw your Claude plan usage as a thin arc around the ring (the 5-hour window as the arc,
-the weekly window as a dot, amber from 80% and red from 95%) and show each session's cost so far in
+the weekly window as a dot, amber from 80% and red from 95%), say when the 5-hour or weekly limit
+would be reached at your current pace ("at this pace, full at 16:40"), and show each session's cost so far in
 the list. Claude Code only shares these numbers with its
 [status line](https://code.claude.com/docs/en/statusline) command, so this needs one more consent:
 turn on **Show quota and cost** in the tray menu or Settings (or click the line at the bottom of the

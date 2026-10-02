@@ -25,7 +25,14 @@ docs are in `README.md`; this file is for working on the code.
   `winhelper.js`, like `fullscreen.js`; both fail soft and log.
 - Smoke tests (`scripts/windows-smoke*.ps1`) drive the real UI through UI Automation: Chromium builds
   its accessibility tree only after a client asks, so retry searches; a held PermissionRequest has to
-  be sent from a background job.
+  be sent from a background job. Shared helpers in `scripts/smoke-ui.ps1`: search only inside
+  Deskling's own windows (a desktop-wide search came back empty once Windows Terminal was open), read
+  whether the list is open before pressing the toggle hotkey, and press keys with `Key` (scan codes:
+  Chromium reads `e.code` from them, and WScript `SendKeys` sends none, so W/S/A/D never matched).
+- Jobs: `smoke` (installer), `smoke-msix`, `smoke-terminals` (portable Windows Terminal with a decoy
+  tab, portable VS Code) and `smoke-wsl` (Ubuntu-24.04 via setup-wsl). The runner's own consoles
+  already open in Windows Terminal. The window helper starts with the app but still needs seconds on
+  a cold runner; an unanswered pid lookup is not a try, so the session's next event retries.
 - Every mascot is code (`src/shared/sprites/`): tune shapes and parameters, not pixels. The logo is
   `sprites/logo.js`; `scripts/make-icon.mjs` turns it into `build/icon.ico` and `docs/logo.png`.
 
@@ -34,9 +41,8 @@ docs are in `README.md`; this file is for working on the code.
 - `preview.html` drives the real renderer and reducer in a browser with scenario buttons
   (`python -m http.server`, then `/preview.html`); `npm start -- --gallery` shows every clip.
 - Release: bump `version` in `package.json`, tag `vX.Y.Z`, push the tag. The workflow builds the
-  installer on Windows, runs `scripts/windows-smoke.ps1` on a fresh runner (upgrade from cc-dog, hooks,
-  the first-start question, uninstall; screenshots in the `smoke-results` artifact) and publishes
-  only if that passed. "Run workflow" by hand does the same without publishing.
+  installer on Windows, runs the four smoke jobs on fresh runners (screenshots and the app log in each
+  `*-results` artifact) and publishes only if all passed. "Run workflow" by hand does the same without publishing.
 - Microsoft Store update (manual by choice, 2026-10-02: Ozan's Partner Center account is an
   individual live.com one, no Entra automation): the release carries `deskling-store.msix`
   (unsigned; the Store signs it). Partner Center → Deskling: Desk Buddy → Update → Packages (remove
