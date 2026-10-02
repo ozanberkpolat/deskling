@@ -30,8 +30,8 @@
 - Shiba stars; the end card shows all ten.
 
 ## Claims (what the product really does)
-- Deskling only **shows**: it cannot answer a permission prompt. In the film the answer is given in
-  the terminal after the mascot calls; the list only shows what waits.
+- Since 1.1 Deskling can answer a permission prompt from its list (Allow / Deny). The film (made for
+  1.0) shows the answer given in the terminal, which is still true; a new cut could show the buttons.
 - It calls once (then once more after 5 min). It runs on Windows. It sends nothing anywhere.
 - No Anthropic or Claude logos, no Claude Code UI imitation beyond plain terminal text.
 

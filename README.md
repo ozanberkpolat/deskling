@@ -10,8 +10,9 @@
 
 Start a long task in Claude Code, switch to something else, and stop checking the terminal. Deskling
 sleeps while nothing happens, gets to work while a session works, and sits up and calls you (once)
-when a session needs your answer or permission. When a turn finishes it celebrates, and the ring stays
-green until you have looked.
+when a session needs your answer or permission. You can allow or deny that permission right from its
+list, or click the session to bring its terminal to the front. When a turn finishes it celebrates,
+and the ring stays green until you have looked.
 
 The ring around it tells you the state at a glance:
 
@@ -45,14 +46,20 @@ Windows 10 and 11. A macOS version is planned.
 
 ## Using it
 
-- **Click** the box for the list of sessions: project, what it is doing, how long.
+- **Click** the box for the list of sessions: project, what it is doing, how long, and what it has
+  cost so far (with the status line option below).
+- **Allow / Deny:** when a session asks for permission, its row shows the command with Allow and
+  Deny buttons. Claude Code's own prompt is in the terminal at the same time; whichever you answer
+  first wins. If you answer neither within 90 s, nothing is decided for you: the terminal prompt just
+  keeps waiting. Turn it off in Settings if you prefer to answer only in the terminal.
+- **Click a session** to bring its terminal forward: the Windows Terminal window (and, when its
+  title matches, the right tab), a classic console window, or the VS Code window of that folder.
 - **Double-click** (or press and hold) to pet it. That also marks everything as seen.
 - **Drag** it anywhere; it snaps to the nearest corner of whichever screen you drop it on. Drop it
   past the edge to tuck it in, leaving a thin strip that slides out on hover.
-- **Ctrl+Alt+D** opens and closes the list from anywhere.
-- **Tray icon** (or right-click the box): mascot (shiba, dragon, owl, robot, cat, frog, ghost,
-  alien, rubber duck or cactus), shape, corner,
-  sound and volume, quiet hours, idle opacity, hide for an hour, start at login.
+- **Ctrl+Alt+D** opens and closes the list from anywhere (change it in Settings).
+- **Tray icon** (or right-click the box): **Settings…** for everything (mascot, shape, corner, sound,
+  quiet hours, timings, hotkey, the Claude Code options), plus quick switches.
 
 It gets out of the way on its own: it hides and stays silent while a full-screen app or a
 presentation is in front, it never makes a sound during quiet hours (20:00 to 08:00 by default) or
@@ -67,50 +74,51 @@ When you say yes on first start it:
 - adds 10 `http` hooks to `%USERPROFILE%\.claude\settings.json`. Each is marked with an
   `X-Deskling-Mark` header so Deskling can find and remove exactly its own; your other settings and
   hooks are left as they are. The file is backed up once, to `settings.json.deskling-backup`, and is
-  never written if it does not parse.
+  never written if it does not parse. The permission hook may wait up to 120 s (for the list's
+  Allow / Deny); every other hook is answered at once.
 - listens on `127.0.0.1:8033` (loopback only) for those hooks. Every request must carry a random
-  token that lives in `%APPDATA%\deskling\hook-token`. It answers at once and never holds Claude Code up.
+  token that lives in `%APPDATA%\deskling\hook-token`.
+- only if you turn on **Show quota and cost**: puts a few lines in front of your status line command
+  (see below). Your own command keeps running unchanged, and is put back when you turn it off.
 
-To stop watching, untick **Watch Claude Code on this PC** in the tray menu: the hooks come out again.
-Uninstalling the GitHub installer version (Settings → Apps) takes them out too; the Store version
-cannot run anything while it is removed, so untick that switch before uninstalling it. Settings and the log stay in `%APPDATA%\deskling`
-until you delete that folder.
+To stop watching, untick **Watch Claude Code on this PC** in the tray menu or Settings: the hooks come
+out again. Uninstalling the GitHub installer version (Settings → Apps) takes them out too, and puts
+your status line back; the Store version cannot run anything while it is removed, so untick that
+switch before uninstalling it. Settings and the log stay in `%APPDATA%\deskling` until you delete
+that folder.
 
 ## Privacy
 
-Deskling sends nothing anywhere. The only network traffic is Claude Code's hooks arriving on
-`127.0.0.1`. The window that draws the mascot has no network access at all (a strict Content
+Deskling sends nothing anywhere. The only network traffic is between Claude Code and Deskling on
+`127.0.0.1`: hook notices coming in, and, when you press Allow or Deny, the answer going back to that
+same request. The window that draws the mascot has no network access at all (a strict Content
 Security Policy plus a request filter), and the app opens no links unless you configure a remote
-relay. There is no telemetry and no update check.
+relay. There is no telemetry and no update check. Full policy:
+[obp.com.tr/deskling/privacy](https://obp.com.tr/deskling/privacy).
 
-## Quota ring (optional)
+## Quota and cost (optional)
 
-Deskling can draw your Claude plan usage as a thin arc around the ring: the 5-hour window as the arc
-and the weekly window as a dot, amber from 80% and red from 95%. Claude Code only shares those
-numbers with a [status line](https://code.claude.com/docs/en/statusline) command, so
-Deskling reads them from a file that your status line writes, `%USERPROFILE%\.claude\limits.json`.
+Deskling can draw your Claude plan usage as a thin arc around the ring (the 5-hour window as the arc,
+the weekly window as a dot, amber from 80% and red from 95%) and show each session's cost so far in
+the list. Claude Code only shares these numbers with its
+[status line](https://code.claude.com/docs/en/statusline) command, so this needs one more consent:
+turn on **Show quota and cost** in the tray menu or Settings (or click the line at the bottom of the
+list). Deskling then wraps your status line command: the payload Claude Code gives it is saved to
+`%USERPROFILE%\.claude\limits.json`, passed to Deskling on `127.0.0.1`, and handed unchanged to your
+own command, so your status line looks the same. Claude Code runs status line commands with Git Bash
+on Windows.
 
-If you have no status line yet, this one writes the file and shows nothing (it needs Node.js on your
-PATH, and Claude Code to run status line commands with Git Bash, which is its default on
-Windows). Add it to `%USERPROFILE%\.claude\settings.json`:
+The cost is what the session would cost at API list prices. On a Claude subscription that is not
+what you pay; the tooltip says so.
 
-```json
-"statusLine": {
-  "type": "command",
-  "command": "node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>require('fs').writeFileSync(require('os').homedir()+'/.claude/limits.json',s))\""
-}
-```
+If OBPTerm already writes `limits.json`, Deskling leaves your status line alone and reads that file.
 
-If you already have a status line, make it also save its input (the JSON it receives on stdin) to
-that file. Without the file there is simply no arc.
+## Settings
 
-## Settings file
-
-Everything in the tray menu is stored in `%APPDATA%\deskling\config.json`, which is reloaded as soon
-as you save it. A few things are only there: `hotkey` (default `Control+Alt+D`, `""` for none),
-`hookPort` (default `8033`), `nagAfterMin` (call once more when something still waits after this
-many minutes, default `5`, `0` for never) and `finishedTtlMin` (how long a finished session counts
-as new, default `30`). The tray's **Open log** shows `deskling.log` when something looks wrong.
+Everything is in **Settings…** (tray menu) and stored in `%APPDATA%\deskling\config.json`, which is
+reloaded as soon as you save it, so hand edits work too. **Copy diagnostics** there gives you the
+version, Windows build, your settings without the token, and the end of the log (never your
+prompts) for a bug report.
 
 ## Build from source
 
@@ -131,12 +139,15 @@ runner by `.github/workflows/release.yml`.
 How it is put together:
 
 - `src/main/`: the Electron main process. `hookserver.js` and `claude-hooks.js` are the Claude Code
-  side, `local.js` turns hook payloads into sessions, `window.js` and `displays.js` place the box,
-  `tray.js` is the menu.
+  side (`hookserver.js` also holds a permission prompt until it is answered), `statusline.js` wraps
+  the status line, `local.js` turns hook payloads into sessions, `winhelper.js` finds a session's
+  process and brings its terminal forward, `window.js` and `displays.js` place the box, `tray.js` is
+  the menu.
 - `src/shared/`: plain JavaScript with no Electron or DOM. `reducer.js` holds all the state rules
   (what counts as waiting, when to call, when to celebrate), `viewmodel.js` shapes it for the screen,
   `sprites/` draws every mascot in code as palette strings.
-- `src/renderer/`: the box, the list and the animation loop.
+- `src/renderer/`: the box, the list, the animation loop and the settings window
+  (`preview-settings.html` shows it in a browser).
 
 Deskling can also follow sessions on another machine through a small relay service that you run
 yourself (`relayUrl` and `token` in the config). That part is undocumented for now; open an issue if

@@ -13,6 +13,17 @@ docs are in `README.md`; this file is for working on the code.
   `X-Deskling-Mark`, never write a file that does not parse, and never write it before the user said
   yes (`localHooks: null` = not asked yet).
 - Links open only for hosts derived from config (`src/main/links.js`); nothing by default.
+- A held PermissionRequest (`hookserver.js`) ends without the widget's answer with `{}`, never an
+  allow. The hook for it has a 120 s timeout (`claude-hooks.js` TIMEOUT), the hold `holdSeconds`
+  (max 110). Bumping the hook shape means bumping `MARK` (now `deskling-v2`); `ours()` must keep
+  matching every older mark so upgrades replace, never double.
+- The status line wrapper (`statusline.js`) never touches a status line it did not write, keeps the
+  user's original in `%APPDATA%\deskling\statusline-original.json`, and leaves OBPTerm's alone.
+- Windows-only work (PID lookup, focusing a terminal) lives in the hidden PowerShell child in
+  `winhelper.js`, like `fullscreen.js`; both fail soft and log.
+- Smoke tests (`scripts/windows-smoke*.ps1`) drive the real UI through UI Automation: Chromium builds
+  its accessibility tree only after a client asks, so retry searches; a held PermissionRequest has to
+  be sent from a background job.
 - Every mascot is code (`src/shared/sprites/`): tune shapes and parameters, not pixels. The logo is
   `sprites/logo.js`; `scripts/make-icon.mjs` turns it into `build/icon.ico` and `docs/logo.png`.
 
