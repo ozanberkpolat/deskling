@@ -116,8 +116,12 @@ Shot '2b-permission-in-list'
 $pressed = powershell.exe -NoProfile -Command @'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Allow')
-$hits = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
-foreach ($e in $hits) { $p = $null; if ($e.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$p)) { $p.Invoke(); 'pressed'; break } }
+# Chromium builds its accessibility tree only once a UIA client asks, so the first search can come back empty
+for ($i = 0; $i -lt 8; $i++) {
+  $hits = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
+  foreach ($e in $hits) { $p = $null; if ($e.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$p)) { $p.Invoke(); 'pressed'; exit } }
+  Start-Sleep 1
+}
 '@
 Write-Host "allow button: $pressed"
 $answer = Receive-Job $job -Wait -AutoRemoveJob
@@ -149,8 +153,11 @@ $clicked = powershell.exe -NoProfile -Command @'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 $A = [System.Windows.Automation.AutomationElement]
 $btn = New-Object System.Windows.Automation.PropertyCondition($A::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)
-foreach ($e in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, $btn)) {
-  if ($e.Current.Name -like '*jumpme*') { $e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); 'clicked'; break }
+for ($i = 0; $i -lt 8; $i++) {                                 # see 3b: the tree appears on demand
+  foreach ($e in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, $btn)) {
+    if ($e.Current.Name -like '*jumpme*') { $e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); 'clicked'; exit }
+  }
+  Start-Sleep 1
 }
 '@
 Write-Host "jump row: $clicked"
@@ -204,7 +211,11 @@ Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 $A = [System.Windows.Automation.AutomationElement]
 $win = $A::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children, (New-Object System.Windows.Automation.PropertyCondition($A::NameProperty, 'Deskling settings')))
 if (-not $win) { 'no settings window'; exit }
-$b = $win.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition($A::NameProperty, 'Bottom left')))
+$b = $null
+for ($i = 0; $i -lt 8 -and -not $b; $i++) {                      # see 3b: the tree appears on demand
+  $b = $win.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition($A::NameProperty, 'Bottom left')))
+  if (-not $b) { Start-Sleep 1 }
+}
 if (-not $b) { 'no button'; exit }
 $p = $null
 if ($b.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$p)) { $p.Invoke(); 'invoked'; exit }
