@@ -14,7 +14,7 @@ export function icon(grey = false, mascot = 'shiba') {
   return img
 }
 
-export function createTray({ config, widget, log, statusText, onQuit, askStatusline, openSettings }) {
+export function createTray({ config, widget, log, statusText, onQuit, askStatusline, openSettings, reportProblem }) {
   const tray = new Tray(icon(true, config.get().mascot))
   tray.setToolTip('Deskling')
   let grey = true, shown = config.get().mascot
@@ -67,6 +67,7 @@ export function createTray({ config, widget, log, statusText, onQuit, askStatusl
       { type: 'separator' },
       { label: 'Open config', click: () => shell.openPath(config.file) },
       { label: 'Open log', click: () => shell.openPath(log.file) },
+      { label: 'Report a problem…', click: reportProblem },
       { label: 'Quit', click: onQuit },
     ])
   }

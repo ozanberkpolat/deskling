@@ -1,0 +1,11 @@
+name: Idea
+description: Something Deskling could do
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Deskling to do?
+      description: What are you doing when you miss it?
+    validations:
+      required: true

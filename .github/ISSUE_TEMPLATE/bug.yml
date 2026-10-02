@@ -1,0 +1,24 @@
+name: Bug report
+description: Something in Deskling does not work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you see, what did you expect instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Installed from
+      options: [Microsoft Store, GitHub installer (deskling-setup.exe), Built from source]
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Tray menu, Report a problem (or Settings, Advanced, Copy diagnostics), then paste here. They never contain your prompts.
+      render: text

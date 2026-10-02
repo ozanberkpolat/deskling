@@ -12,7 +12,9 @@ docs are in `README.md`; this file is for working on the code.
 - `~/.claude/settings.json` belongs to the user: only ever add or remove hooks marked
   `X-Deskling-Mark`, never write a file that does not parse, and never write it before the user said
   yes (`localHooks: null` = not asked yet).
-- Links open only for hosts derived from config (`src/main/links.js`); nothing by default.
+- Links open only for hosts derived from config (`src/main/links.js`); nothing by default. One fixed exception:
+  "Report a problem" opens `https://github.com/ozanberkpolat/deskling/issues/new` from the main
+  process (`src/main/report.js`), never through the renderer's allowlist.
 - A held PermissionRequest (`hookserver.js`) ends without the widget's answer with `{}`, never an
   allow. The hook for it has a 120 s timeout (`claude-hooks.js` TIMEOUT), the hold `holdSeconds`
   (max 110). Bumping the hook shape means bumping `MARK` (now `deskling-v2`); `ours()` must keep

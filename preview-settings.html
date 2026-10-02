@@ -15,7 +15,7 @@ window.deskling = {
   getConfig: async () => cfg,
   setConfig: patch => { cfg = { ...cfg, ...patch }; console.log('setConfig', JSON.stringify(patch)); subs.forEach(f => f(cfg)) },
   onFullConfig: f => subs.push(f),
-  copyDiagnostics: async () => true, openConfig: () => console.log('openConfig'), openLog: () => console.log('openLog'),
+  copyDiagnostics: async () => true, openConfig: () => console.log('openConfig'), openLog: () => console.log('openLog'), reportProblem: () => console.log('reportProblem'),
 }
 </script>
 </head>
@@ -89,6 +89,7 @@ window.deskling = {
       <button type="button" id="diagnostics">Copy diagnostics</button>
       <button type="button" class="ghost" id="openConfig">Open the settings file</button>
       <button type="button" class="ghost" id="openLog">Open the log</button>
+      <button type="button" class="ghost" id="report">Report a problem</button>
       <span class="done" id="copied" role="status"></span>
     </div>
     <p class="note">Diagnostics are the version, Windows build, your settings without the token, and the end of the log. Never your prompts. Paste them into a GitHub issue.</p>

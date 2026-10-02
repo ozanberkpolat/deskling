@@ -75,6 +75,7 @@ $('diagnostics').addEventListener('click', async () => {
 })
 $('openConfig').addEventListener('click', () => bridge.openConfig())
 $('openLog').addEventListener('click', () => bridge.openLog())
+$('report').addEventListener('click', () => bridge.reportProblem())
 
 function draw() {
   if (!c) return

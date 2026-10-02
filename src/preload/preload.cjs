@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('deskling', {
   copyDiagnostics: () => ipcRenderer.invoke('copy-diagnostics'),
   openConfig: () => ipcRenderer.send('open-config'),
   openLog: () => ipcRenderer.send('open-log'),
+  reportProblem: () => ipcRenderer.send('report-problem'),
   ack: () => ipcRenderer.send('ack'),
   dragStart: () => ipcRenderer.send('drag-start'),
   dragEnd: () => ipcRenderer.invoke('drag-end'),

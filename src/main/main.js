@@ -20,6 +20,7 @@ import { createLocal } from './local.js'
 import { createWinHelper } from './winhelper.js'
 import { limitsFrom, watchLimits } from './quota.js'
 import { installStatusline, readStatusline, removeStatusline } from './statusline.js'
+import { issueUrl, redact } from './report.js'
 import { allowedLinks, safeExternal, sessionUrl } from './links.js'
 import { fromApp, harden } from './security.js'
 import { Store } from './store.js'
@@ -232,9 +233,16 @@ function openSettings() {
 function diagnostics() {
   let tail = ''
   try { tail = readFileSync(log.file, 'utf8').split(/\r?\n/).slice(-40).join('\n') } catch {}
-  return [`Deskling ${app.getVersion()} (${STORE ? 'Microsoft Store' : 'installer'}${app.isPackaged ? '' : ', dev'})`,
+  return redact([`Deskling ${app.getVersion()} (${STORE ? 'Microsoft Store' : 'installer'}${app.isPackaged ? '' : ', dev'})`,
     `Electron ${process.versions.electron}, Windows ${release()}, ${process.arch}`,
-    `Settings: ${JSON.stringify(fullConfig())}`, '', 'Log (last 40 lines):', tail].join('\n')
+    `Settings: ${JSON.stringify(fullConfig())}`, '', 'Log (last 40 lines):', tail].join('\n'), homedir())
+}
+
+// The full diagnostics to the clipboard, then a short prefilled GitHub issue in the browser.
+function reportProblem() {
+  clipboard.writeText(diagnostics())
+  shell.openExternal(issueUrl({ version: app.getVersion(), channel: STORE ? 'Microsoft Store' : 'installer', windows: release() }))
+  log('report a problem: diagnostics copied, issue page opened')
 }
 
 function startGallery() {
@@ -299,7 +307,7 @@ function start() {
       widget.send('view', lastView || store.view)
     },
   })
-  tray = createTray({ config, widget, log, statusText, onQuit: () => app.quit(), askStatusline, openSettings })
+  tray = createTray({ config, widget, log, statusText, onQuit: () => app.quit(), askStatusline, openSettings, reportProblem })
   if (arg('settings')) openSettings()
 
   ipcMain.on('list', (e, open) => {
@@ -324,6 +332,7 @@ function start() {
   ipcMain.handle('copy-diagnostics', e => { if (!fromApp(e)) return false; clipboard.writeText(diagnostics()); return true })
   ipcMain.on('open-config', e => { if (fromApp(e)) shell.openPath(config.file) })
   ipcMain.on('open-log', e => { if (fromApp(e)) shell.openPath(log.file) })
+  ipcMain.on('report-problem', e => { if (fromApp(e)) reportProblem() })
   // Allow / Deny from the list: answers the held hook request, if it is still held.
   ipcMain.on('answer', (e, holdId, session, allow) => {
     if (!fromApp(e) || !hooks) return
