@@ -67,6 +67,8 @@ bridge.onView(v => {
   drawPups(v.pups)
   box.dataset.mood = v.mood
   box.title = { offline: 'Offline', waiting: 'Something waits for you', error: 'A session stopped on an error', finished: 'A session finished', working: 'Working', idle: 'All quiet' }[v.mood]
+  box.setAttribute('aria-label', boxLabel(v))
+  announce(v)
   tuck()
   hl = checkHighlight(v.rows, hl)                          // a new question under the highlight: W/S again
   if (open) draw()
@@ -82,6 +84,25 @@ bridge.onFx(({ fx }) => {
   if (fx === 'celebrate') dog.react('celebrate')
   if (fx === 'yawn') dog.react('yawn')
 })
+
+// What a screen reader hears for the box: the mood and the counts.
+function boxLabel(v) {
+  const b = v.badges, parts = []
+  if (b.waiting) parts.push(`${b.waiting} waiting for you`)
+  if (b.error) parts.push(`${b.error} stopped on an error`)
+  if (b.finished) parts.push(`${b.finished} finished`)
+  if (b.working) parts.push(`${b.working} working`)
+  return `Deskling: ${v.mood === 'offline' ? 'offline' : parts.join(', ') || 'all quiet'}`
+}
+// A new question is announced once (politely), so a screen reader user hears it without the list open.
+const announced = new Set()
+function announce(v) {
+  for (const r of v.rows) {
+    if (!r.ask || announced.has(r.ask.id)) continue
+    announced.add(r.ask.id)
+    document.getElementById('live').textContent = `${r.project || 'A session'} needs approval: ${r.ask.text}`
+  }
+}
 
 let notice = '', noticeTimer = null, hl = null             // hl: the keyboard highlight {key, askId}
 function draw() {
@@ -105,11 +126,12 @@ function setOpen(v) {
   showPeek(false)
   document.body.classList.toggle('open', v)
   list.hidden = !v
+  box.setAttribute('aria-expanded', String(v))
   bridge.setListOpen(v)
   if (!v) interactive = false                               // main resets click-through on close
   tuck()
   clearInterval(clock)
-  if (v) { draw(); clock = setInterval(draw, 30_000) }      // keep "4m ago" honest while open
+  if (v) { draw(); clock = setInterval(draw, 30_000); list.focus({ preventScroll: true }) }   // keep "4m ago" honest while open; focus for keys and screen readers
 }
 bridge.onToggleList?.(() => setOpen(!open))                 // the global hotkey
 

@@ -37,6 +37,8 @@ export class Dog {
     this.queue = []
     this.timer = this.otimer = null
     this.oi = 0
+    // reduced motion: each clip shows one settled frame, no animation (the mood still changes the picture)
+    this.still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
     this.setMascot(mascot)
   }
 
@@ -89,6 +91,7 @@ export class Dog {
   }
 
   play(seq) {
+    if (this.still) { this.queue = []; return this.start(seq[seq.length - 1]) }   // straight to where the sequence settles
     this.queue = seq.slice(1)
     this.start(seq[0])
   }
@@ -114,6 +117,7 @@ export class Dog {
     const clip = this.m.clips[this.name]
     const f = clip.frames[this.i]
     this.draw(f.rows)
+    if (this.still) return
     const ms = this.name === 'type' && this.fast ? f.ms * 0.55 : f.ms
     this.timer = setTimeout(() => {
       if (++this.i < clip.frames.length) return this.step()
@@ -126,7 +130,7 @@ export class Dog {
   tickOverlay() {
     clearTimeout(this.otimer)
     this.drawFx()
-    if (this.effect) this.otimer = setTimeout(() => { this.oi++; this.tickOverlay() }, this.effect.ms || 450)
+    if (this.effect && !this.still) this.otimer = setTimeout(() => { this.oi++; this.tickOverlay() }, this.effect.ms || 450)
   }
 
   palette() { return this.mood === 'offline' ? this.m.grey : this.m.colors }

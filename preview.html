@@ -32,7 +32,7 @@
 <body>
 <div class="screen" id="screen">
   <div id="widget">
-    <div id="box" class="box" data-mood="offline">
+    <div id="box" class="box" data-mood="offline" role="button" aria-label="Deskling" aria-haspopup="true" aria-controls="list" aria-expanded="false">
       <i class="radar"></i><i class="radar r2"></i>
       <i class="ring"></i>
       <div class="face"><canvas id="dog"></canvas></div>
@@ -40,9 +40,10 @@
       <canvas id="fx"></canvas>
       <svg class="quota" viewBox="0 0 126 126" aria-hidden="true" hidden><path class="q-track" pathLength="100"/><path class="q-arc" pathLength="100"/><circle class="q-dot" r="3.2"/></svg>
     </div>
-    <div id="pups"></div>
-    <div id="peek" hidden></div>
-    <div id="list" hidden></div>
+    <div id="pups" aria-hidden="true"></div>
+    <div id="peek" hidden aria-hidden="true"></div>
+    <div id="list" hidden role="region" aria-label="Claude Code sessions" tabindex="-1"></div>
+    <div id="live" class="sr" role="status" aria-live="polite"></div>
   </div>
 </div>
 

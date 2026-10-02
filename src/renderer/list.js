@@ -34,7 +34,7 @@ export function renderList(root, vm, { now = Date.now(), openUrl, openSession, a
   const frag = document.createDocumentFragment()
   let group = null
   for (const r of vm.rows) {
-    if (r.group !== group) { group = r.group; frag.append(el('div', 'grp', LABEL[group])) }
+    if (r.group !== group) { group = r.group; const g = el('div', 'grp', LABEL[group]); g.setAttribute('role', 'heading'); g.setAttribute('aria-level', '3'); frag.append(g) }
     // Paperclip rows open their page; VPS cc rows open their terminal (main builds that URL);
     // a laptop session's terminal is already on this screen.
     // A held permission prompt: the row holds two real buttons, so it is not a button itself.
@@ -59,7 +59,7 @@ export function renderList(root, vm, { now = Date.now(), openUrl, openSession, a
   }
   const st = statusLine(vm)
   if (st) frag.append(el('div', 'status', st))
-  if (notice) frag.append(el('div', 'status notice', notice))
+  if (notice) { const n = el('div', 'status notice', notice); n.setAttribute('role', 'status'); frag.append(n) }
   if (answer && vm.rows.some(r => r.ask)) frag.append(el('div', 'status keys', 'W / S select · A allow · D deny'))
   root.replaceChildren(frag)
   root.querySelector('.row.hl')?.scrollIntoView({ block: 'nearest' })
@@ -101,15 +101,19 @@ function quotaRow(q, now) {
 function askParts(r, answer) {
   const box = el('div', 'ask')
   const yes = el('button', 'yes', 'Allow'), no = el('button', 'no', 'Deny')
+  // the names stay "Allow" / "Deny"; what they answer is read out from this description
+  const about = el('span', 'sr', `${r.project || 'session'}: ${r.ask.text}`)
+  about.id = `ask-${r.ask.id}`
   for (const [b, allow] of [[yes, true], [no, false]]) {
     b.type = 'button'
+    b.setAttribute('aria-describedby', about.id)
     b.addEventListener('click', e => {
       e.stopPropagation()
       yes.disabled = no.disabled = true
       answer(r.ask.id, r.id, allow)
     })
   }
-  box.append(yes, no, el('span', 'hint', 'or answer in the terminal'))
+  box.append(yes, no, el('span', 'hint', 'or answer in the terminal'), about)
   return box
 }
 
