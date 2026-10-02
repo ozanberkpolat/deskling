@@ -141,10 +141,11 @@ export function buildClips() {
 export const CLIPS = buildClips()
 
 // a tiny fly on the 24x24 effects canvas: wings flick, it zigzags
-const fly = (x, y, w) => ({ x, y, rows: w ? ['z.z', '.n.'] : ['.n.', 'z.z'] })
+// 5x4: a 2x2 body with wings up on one frame and down on the next
+const fly = (x, y, w) => ({ x, y, rows: w ? ['zz.zz', 'zznzz', '.nn..', '.....'] : ['.....', '.nn..', 'zznzz', 'zz.zz'] })
 export const FX = {
   fly: { ms: 130, frames: [
-    [fly(14, 6, 0)], [fly(16, 4, 1)], [fly(15, 2, 0)], [fly(17, 5, 1)], [fly(14, 3, 0)], [fly(12, 5, 1)], [],
+    [fly(13, 6, 0)], [fly(15, 4, 1)], [fly(14, 2, 0)], [fly(16, 5, 1)], [fly(13, 3, 0)], [fly(11, 5, 1)], [],
   ] },
 }
 export const FX_FOR = { sleep: 'zzz', jump: 'fly', wag: 'sparkle', sitUp: 'bubble', stare: 'bubble', oops: 'oops' }

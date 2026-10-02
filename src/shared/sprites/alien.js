@@ -20,10 +20,10 @@ const mx = x => 2 * C - x            // mirror around the head axis
 
 // antenna: polyline offsets from the base, last point = the tip
 const ANT = {
-  up: [[0, 0], [-1, -2.5], [-1.5, -5.5]],
-  lean: [[0, 0], [-2, -2.5], [-4, -5]],
-  lean2: [[0, 0], [1, -2.5], [1.5, -5.5]],
-  droop: [[0, 0], [-4, -3], [-7, 0.5]],
+  up: [[0, 0], [-1, -3.5], [-1.5, -7]],
+  lean: [[0, 0], [-2, -3], [-4.5, -6]],
+  lean2: [[0, 0], [1, -3.5], [1.5, -7]],
+  droop: [[0, 0], [-4, -3.5], [-7.5, 0.5]],
 }
 const TIP = {
   bright: ['3', '4'], alert: ['a', 'Y'], dull: ['g', 'G'], flash: ['y', 'Y'],
@@ -34,7 +34,8 @@ function antennae(l = 'up', r = l, tip = 'bright', dy = 0) {
     for (const [side, kind] of [[-1, l], [1, r]]) {
       const bx = side < 0 ? 15 : mx(15), by = 9 + dy
       const pts = ANT[kind].map(([x, y]) => [bx + (side < 0 ? x : -x), by + y])
-      for (let i = 1; i < pts.length; i++) line(g, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], 'W')
+      // two pixels wide, so the stalk reads at 2x (one line, then the same one pixel toward the head axis)
+      for (let i = 1; i < pts.length; i++) for (const dx of [0, -side]) line(g, pts[i - 1][0] + dx, pts[i - 1][1], pts[i][0] + dx, pts[i][1], 'W')
     }
   })
   const tips = layer(g => {
