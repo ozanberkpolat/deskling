@@ -5,6 +5,7 @@ import { paint } from './draw.js'
 import { mascotOf } from '../shared/sprites/mascots.js'
 import { renderList, rowParts, quotaLine } from './list.js'
 import { play } from './sound.js'
+import { keyAction, nextHighlight, checkHighlight } from '../shared/keys.js'
 
 const bridge = window.deskling
 const $ = id => document.getElementById(id)
@@ -67,6 +68,7 @@ bridge.onView(v => {
   box.dataset.mood = v.mood
   box.title = { offline: 'Offline', waiting: 'Something waits for you', error: 'A session stopped on an error', finished: 'A session finished', working: 'Working', idle: 'All quiet' }[v.mood]
   tuck()
+  hl = checkHighlight(v.rows, hl)                          // a new question under the highlight: W/S again
   if (open) draw()
   if (!peek.hidden) drawPeek()
 })
@@ -81,10 +83,10 @@ bridge.onFx(({ fx }) => {
   if (fx === 'yawn') dog.react('yawn')
 })
 
-let notice = '', noticeTimer = null
+let notice = '', noticeTimer = null, hl = null             // hl: the keyboard highlight {key, askId}
 function draw() {
   if (vm) renderList(list, vm, { openUrl: bridge.openUrl, openSession: bridge.openSession, answer: bridge.answer,
-    offerStatusline: cfg.offerStatusline && bridge.setupStatusline, notice })
+    offerStatusline: cfg.offerStatusline && bridge.setupStatusline, notice, highlight: hl?.key })
 }
 // a short line at the bottom of the list ("Couldn't find that terminal"), gone after 4 s
 bridge.onNotice?.(text => {
@@ -99,6 +101,7 @@ function setOpen(v) {
   if (v === open) return
   open = v
   openedAt = Date.now()
+  hl = null                                                 // every opening starts unarmed
   showPeek(false)
   document.body.classList.toggle('open', v)
   list.hidden = !v
@@ -189,7 +192,19 @@ box.addEventListener('pointerup', async () => {
 function pet() { dog.react('pet'); bridge.ack?.() }
 box.addEventListener('lostpointercapture', () => { if (pressed) { pressed = false; bridge.dragEnd?.() } })
 box.addEventListener('contextmenu', e => { e.preventDefault(); bridge.showMenu?.() })
-addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false) })
+// WASD (or arrows) on the open list; see shared/keys.js for the rules and the guard against a stray A.
+addEventListener('keydown', e => {
+  const a = keyAction(e, { openedAt, armed: !!hl })
+  if (!a) return
+  if (a.type === 'close') return setOpen(false)
+  if (!open || !vm) return
+  e.preventDefault()
+  if (a.type === 'move') { hl = nextHighlight(vm.rows, hl, a.dir); draw(); return }
+  const row = hl && [...list.querySelectorAll('[data-key]')].find(el => el.dataset.key === hl.key)
+  if (!row) return
+  if (a.type === 'answer') row.querySelector(a.allow ? '.ask .yes' : '.ask .no')?.click()   // the real button: answers once
+  if (a.type === 'open' && row.tagName === 'BUTTON') row.click()
+})
 // Close when focus goes elsewhere, but not on a blur right after opening: from the hotkey, Windows
 // may refuse to hand focus to us (foreground lock) and the list would shut the moment it opened.
 addEventListener('blur', () => { if (Date.now() - openedAt > 400) setOpen(false) })

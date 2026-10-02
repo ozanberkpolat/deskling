@@ -30,7 +30,7 @@ export function rowParts(r, now = Date.now()) {
   return parts
 }
 
-export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer, offerStatusline, notice } = {}) {
+export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer, offerStatusline, notice, highlight } = {}) {
   const frag = document.createDocumentFragment()
   let group = null
   for (const r of vm.rows) {
@@ -40,7 +40,9 @@ export function renderList(root, vm, { now = Date.now(), openUrl, openSession, a
     // A held permission prompt: the row holds two real buttons, so it is not a button itself.
     const asking = r.ask && answer
     const click = asking ? null : r.k === 'pc' ? (r.url && (() => openUrl?.(r.url))) : (r.open && openSession && (() => openSession(r.id)))
-    const row = el(click ? 'button' : 'div', `row g-${r.group} k-${r.k}${r.fresh ? ' fresh' : ''}${asking ? ' asking' : ''}`)
+    const key = `${r.k}:${r.id}`
+    const row = el(click ? 'button' : 'div', `row g-${r.group} k-${r.k}${r.fresh ? ' fresh' : ''}${asking ? ' asking' : ''}${key === highlight ? ' hl' : ''}`)
+    row.dataset.key = key
     if (click) { row.type = 'button'; row.addEventListener('click', click); if (r.open === 'terminal') row.title = 'Show terminal' }
     row.append(...rowParts(r, now))
     if (asking) row.append(askParts(r, answer))
@@ -58,7 +60,9 @@ export function renderList(root, vm, { now = Date.now(), openUrl, openSession, a
   const st = statusLine(vm)
   if (st) frag.append(el('div', 'status', st))
   if (notice) frag.append(el('div', 'status notice', notice))
+  if (answer && vm.rows.some(r => r.ask)) frag.append(el('div', 'status keys', 'W / S select · A allow · D deny'))
   root.replaceChildren(frag)
+  root.querySelector('.row.hl')?.scrollIntoView({ block: 'nearest' })
 }
 
 // Reset times in the laptop's own clock: "14:30" today, else "Thu 09:00".

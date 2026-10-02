@@ -167,6 +167,10 @@ const scen = [
   ['Start working', 'one session works: the dog types on its laptop, blue 1.', () => one('working', 'Edit: dog.js')],
   ['3 working', 'three sessions work: blue 3, the dog types faster.', () => base.forEach(s => dispatch({ type: 'session', data: { ...s, state: 'working', since: now() } }))],
   ['Asks permission', 'a session needs approval: radar rings, orange ring, orange 1, the dog sits up and barks once. Open the list: Allow / Deny under the command.', () => dispatch({ type: 'session', data: { ...S('1', 'my-app', 'login fix', 'blocked', 'Bash: docker compose up -d portal'), ask: { id: 'h1', text: 'Bash: docker compose up -d portal' } } })],
+  ['Two questions (WASD)', 'two sessions ask for permission. Open the list: W/S moves the orange highlight, A allows and D denies the highlighted one (only after a W/S), Esc closes.', () => {
+    dispatch({ type: 'session', data: { ...S('1', 'my-app', 'login fix', 'blocked', 'Bash: npm install zod'), ask: { id: 'h1', text: 'Bash: npm install zod' } } })
+    dispatch({ type: 'session', data: { ...S('4', 'api', 'rate limits', 'blocked', 'Edit: src/limits.ts'), ask: { id: 'h2', text: 'Edit: src/limits.ts' } } })
+  }],
   ['+5 min still waiting', 'nothing answered for 5 minutes: one more bark (only while something waits; once per wait).', () => window.preview.advance(5 * 60_000 + 15_000)],
   ['Answered', 'approval given: radar stops, back to typing.', () => one('working', 'Bash: docker compose up -d portal')],
   ['Turn finishes', 'the turn ends: the dog jumps with sparkles, then wags; green 1 until you open the list (or 30 min pass).', () => one('done', 'finished in 212s')],

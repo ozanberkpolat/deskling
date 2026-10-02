@@ -144,6 +144,8 @@ button.row:hover, button.row:focus-visible { background: rgba(140,160,190,.08); 
 .offer { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--border); margin-top: 4px; padding: 9px 8px; color: var(--info); font: 600 11.5px var(--font); cursor: pointer; border-radius: 0 0 10px 10px; }
 .offer:hover, .offer:focus-visible { background: rgba(140,160,190,.08); outline: none; }
 .status.notice { color: var(--warn); }
+.status.keys { font: 600 10.5px var(--mono); color: var(--muted); letter-spacing: .02em; }
+.row.hl { box-shadow: inset 0 0 0 2px var(--accent); background: rgba(255,138,30,.07); }
 .more, .empty, .status { color: var(--muted); padding: 8px; font-size: 11.5px; }
 .qline { margin: 6px 0 0 13px; font: 600 10.5px/1.4 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .qline .w { color: var(--warn); } .qline .h { color: var(--bad); }
