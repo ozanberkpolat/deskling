@@ -145,7 +145,8 @@ foreach (`$e in 'SessionStart', 'UserPromptSubmit') {
 }
 Start-Sleep 120
 "@
-$fakeProc = Start-Process powershell.exe -ArgumentList '-NoProfile', '-EncodedCommand', [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($fake)) -PassThru
+$enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($fake))
+$fakeProc = Start-Process powershell.exe -ArgumentList '-NoProfile', '-EncodedCommand', $enc -PassThru
 Start-Sleep 6
 (New-Object -ComObject WScript.Shell).SendKeys('^%d')          # open the list: Deskling has the foreground now
 Start-Sleep 2
