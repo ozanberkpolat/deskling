@@ -36,8 +36,11 @@ test('winhelper: pid and focus go through the helper; a silent helper times out 
     spawnFn: fakeSpawn(r => r.cmd === 'pid' ? (r.port === 5555 ? { pid: 1234 } : null) : { ok: true, how: 'window' }) })
   assert.equal(await w.pid(5555, 8033), 1234)
   assert.deepEqual(await w.focus({ pid: 1234, folder: 'my-app' }), { id: 2, ok: true, how: 'window' })
-  assert.equal(await w.pid(6666, 8033, 50), undefined)            // no answer after the cap: undefined (not a try)
+  assert.equal(await w.pid(6666, 8033, 50), null)                 // it has answered before: a timeout counts as a try
   w.stop()
+  const cold = createWinHelper({ log: () => {}, platform: 'win32', spawnFn: fakeSpawn(() => null) })
+  assert.equal(await cold.pid(5555, 8033, 50), undefined)         // never answered yet (still starting): not a try
+  cold.stop()
   const off = createWinHelper({ log: () => {}, platform: 'linux' })
   assert.equal(await off.pid(1, 2), null)
   assert.equal((await off.focus({ pid: 1 })).ok, false)

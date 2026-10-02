@@ -9,6 +9,9 @@ import { randomBytes, timingSafeEqual } from 'node:crypto'
 
 const MAX_BODY = 1_000_000
 export const HOLD_MS = 90_000                   // under the 120 s hook timeout claude-hooks.js sets
+// Tools whose "permission" is really a question for you (multiple choice): Allow would only let
+// Claude Code show it, never answer it, so these are not held and get no Allow / Deny.
+export const QUESTION_TOOLS = new Set(['AskUserQuestion'])
 
 export function decision(allow) {
   return { hookSpecificOutput: { hookEventName: 'PermissionRequest',
@@ -66,7 +69,7 @@ export function startHookServer({ port, token, onHook, log, holdPermission = () 
       if (term.startsWith('$')) term = ''           // the variable was not set in that terminal
       const wsl = String(req.headers['x-deskling-wsl'] || '')     // set by a WSL hook (wsl.js): the distro
       let meta = { remotePort: req.socket.remotePort, ...(term ? { term } : {}), ...(/^[\w.-]{1,64}$/.test(wsl) ? { wsl } : {}) }
-      if (ev === 'PermissionRequest' && typeof session === 'string' && holdPermission()) {
+      if (ev === 'PermissionRequest' && typeof session === 'string' && !QUESTION_TOOLS.has(p.tool_name) && holdPermission()) {
         const id = randomBytes(6).toString('hex')
         held.set(id, { res, session, timer: setTimeout(() => finish(id, {}), holdMs) })
         // Claude Code gave up on us (its own timeout, or the terminal was answered and it moved on)

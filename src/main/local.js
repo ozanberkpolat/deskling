@@ -62,7 +62,8 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
       case 'SubagentStop': if (aid) r.agents.delete(aid); break
       case 'PermissionRequest': {
         set('blocked')
-        const text = cut(`${p.tool_name || '?'}: ${summarize(p.tool_input)}`, 120)
+        const q = p.tool_name === 'AskUserQuestion' && p.tool_input?.questions?.[0]?.question   // a question, answered in the terminal
+        const text = cut(q ? `Question: ${q}` : `${p.tool_name || '?'}: ${summarize(p.tool_input)}`, 120)
         s.last = text
         s.ask = meta.holdId ? { id: meta.holdId, text } : null
         break

@@ -30,10 +30,28 @@ Add-Type -Namespace Deskling -Name W -MemberDefinition @'
 [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
 [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool attach);
 [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+[DllImport("iphlpapi.dll")] static extern uint GetExtendedTcpTable(IntPtr t, ref int len, bool sort, int af, int cls, uint r);
+// The process that owns the IPv4 connection localPort -> remotePort, 0 if none. Straight from the
+// TCP table (TCP_TABLE_OWNER_PID_ALL): with Get-NetTCPConnection the lookup missed its 1 s on a real laptop,
+// and every hook reply waited that full second.
+public static int Owner(int localPort, int remotePort) {
+  int len = 0;
+  GetExtendedTcpTable(IntPtr.Zero, ref len, false, 2, 5, 0);
+  IntPtr buf = Marshal.AllocHGlobal(len);
+  try {
+    if (GetExtendedTcpTable(buf, ref len, false, 2, 5, 0) != 0) return 0;
+    int n = Marshal.ReadInt32(buf);
+    for (int i = 0; i < n; i++) {
+      IntPtr row = IntPtr.Add(buf, 4 + i * 24);    // MIB_TCPROW_OWNER_PID: state, local addr, local port, remote addr, remote port, pid
+      int lp = Marshal.ReadInt32(row, 8), rp = Marshal.ReadInt32(row, 16);
+      if ((((lp & 0xFF) << 8) | ((lp >> 8) & 0xFF)) == localPort && (((rp & 0xFF) << 8) | ((rp >> 8) & 0xFF)) == remotePort) return Marshal.ReadInt32(row, 20);
+    }
+    return 0;
+  } finally { Marshal.FreeHGlobal(buf); }
+}
 '@
 $A = [System.Windows.Automation.AutomationElement]
-# the first call of each loads its module (seconds); do it now, not during a hook's 1 s pid lookup
-Get-NetTCPConnection -LocalPort 1 -ErrorAction SilentlyContinue | Out-Null
+# the first call loads its module (seconds); do it now, not during a hook's 1 s pid lookup (WSL only needs it)
 Get-CimInstance Win32_Process -Filter 'ProcessId=0' -ErrorAction SilentlyContinue | Out-Null
 function Front($h) {
   if ([Deskling.W]::IsIconic($h)) { [void][Deskling.W]::ShowWindow($h, 9) }
@@ -92,8 +110,8 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
     $r = $line | ConvertFrom-Json
     $out.id = $r.id
     if ($r.cmd -eq 'pid') {
-      $c = Get-NetTCPConnection -LocalPort ([int]$r.port) -RemotePort ([int]$r.hookPort) -ErrorAction SilentlyContinue | Select-Object -First 1
-      $id = $(if ($c) { [int]$c.OwningProcess } else { $null })
+      $id = [Deskling.W]::Owner([int]$r.port, [int]$r.hookPort)
+      if (-not $id) { $id = $null }
       # a WSL hook comes from curl.exe, which exits at once: its parent wsl.exe holds the tab's console
       if ($id) {
         $p = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue
@@ -125,7 +143,7 @@ export function createReader(onReply) {
 
 export function createWinHelper({ log, platform = process.platform, spawnFn = spawn }) {
   if (platform !== 'win32') return { pid: async () => null, focus: async () => ({ ok: false, how: 'unsupported' }), warm() {}, stop() {} }
-  let child = null, seq = 0
+  let child = null, seq = 0, ready = false          // ready: the helper has answered once (it has started)
   const waiting = new Map()                        // id → resolve
 
   function ensure() {
@@ -133,7 +151,7 @@ export function createWinHelper({ log, platform = process.platform, spawnFn = sp
     const encoded = Buffer.from(SCRIPT, 'utf16le').toString('base64')
     child = spawnFn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-EncodedCommand', encoded],
       { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
-    child.stdout.setEncoding('utf8').on('data', createReader(r => { const done = waiting.get(r.id); if (done) { waiting.delete(r.id); done(r) } }))
+    child.stdout.setEncoding('utf8').on('data', createReader(r => { ready = true; const done = waiting.get(r.id); if (done) { waiting.delete(r.id); done(r) } }))
     child.stderr.setEncoding('utf8').on('data', d => { const s = String(d).trim(); if (s && !s.startsWith('#< CLIXML')) log(`window helper: ${s.slice(0, 200)}`) })
     child.on('error', e => log(`window helper: ${e.message}`))
     child.on('exit', code => {
@@ -158,7 +176,9 @@ export function createWinHelper({ log, platform = process.platform, spawnFn = sp
     async pid(port, hookPort, ms = 1000) {
       const r = await ask({ cmd: 'pid', port, hookPort }, ms)
       if (!r.pid) log?.(`no terminal found for the hook on port ${port}: ${r.error || 'no owning process'}`)
-      return r.error ? undefined : r.pid ?? null      // undefined: no answer (helper still starting), try again later
+      // undefined = no answer while the helper is still starting: not a try. Once it runs, a timeout
+      // counts, so a slow lookup cannot hold every hook reply for a second forever.
+      return r.error && !ready ? undefined : r.pid ?? null
     },
     focus: target => ask({ cmd: 'focus', ...target }, 5000),
     // PowerShell takes seconds to start: a cold first lookup timed out and the first session got no jump

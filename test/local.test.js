@@ -191,6 +191,11 @@ test('hookserver: a permission prompt is held for the list; allow, deny, timeout
     assert.deepEqual(await send({ session_id: 'b', hook_event_name: 'PreToolUse' }), {})
     assert.deepEqual(await reply, {})
     assert.equal(hs.held, 0)
+    // AskUserQuestion is a question, not a permission: answered at once, never held
+    assert.deepEqual(await send({ session_id: 'q', hook_event_name: 'PermissionRequest', tool_name: 'AskUserQuestion',
+      tool_input: { questions: [{ question: 'Which DB?', options: [] }] } }), {})
+    assert.equal(hs.held, 0)
+    assert.equal(got.at(-1).meta.holdId, undefined)
     // a Notification from the same session does not release it
     reply = ask('c')
     await until(() => hs.held === 1)
@@ -223,6 +228,9 @@ test('local: a held prompt puts Allow/Deny on the session until it is settled', 
   assert.equal(out.at(-1).state, 'blocked')
   l.hook(P('PermissionRequest', { tool_name: 'Edit', tool_input: { file_path: 'b.js' } }))   // not held: no buttons
   assert.equal(out.at(-1).ask, null)
+  l.hook(P('PermissionRequest', { tool_name: 'AskUserQuestion', tool_input: { questions: [{ question: 'Which DB?' }] } }))
+  assert.equal(out.at(-1).last, 'Question: Which DB?')        // a question: waits for you, answered in the terminal
+  assert.equal(out.at(-1).state, 'blocked')
   l.hook(P('PermissionRequest', { tool_name: 'Edit', tool_input: { file_path: 'c.js' } }), { holdId: 'h3' })
   l.hook(P('PreToolUse', { tool_name: 'Edit', tool_input: { file_path: 'c.js' } }))       // answered in the terminal
   assert.equal(out.at(-1).ask, null)

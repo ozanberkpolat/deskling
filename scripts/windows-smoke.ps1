@@ -90,6 +90,10 @@ Check (Running) 'still running after hooks'
 # the terminal answered it (any later event from that session): the held request gets {}
 & $post $tok ($s -replace '%E%', 'PreToolUse') | Out-Null
 Check ((Receive-Job $held -Wait -AutoRemoveJob) -eq '{}') 'a held prompt is released with {} when the terminal answers first'
+# AskUserQuestion asks for an answer, not a permission: never held, no Allow / Deny
+$t0 = Get-Date
+$q = & $post $tok ($s -replace '%E%', 'PermissionRequest' -replace '}$', ',"tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Which DB?"}]}}')
+Check ($q.Content -eq '{}' -and ((Get-Date) - $t0).TotalSeconds -lt 3) 'AskUserQuestion is answered at once, never held'
 
 # ── 3a. the status line wrapper: quota and cost through Git Bash, as Claude Code runs it ──
 $sl = (Get-Content $settings -Raw | ConvertFrom-Json).statusLine
