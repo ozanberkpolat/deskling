@@ -80,10 +80,15 @@ Check ((& $post 'wrong-token' '{}').StatusCode -eq 401) 'hook receiver refuses a
 $s = '{"session_id":"smoke1","cwd":"C:\\work\\my-app","hook_event_name":"%E%"}'
 Check ((& $post $tok ($s -replace '%E%', 'SessionStart')).StatusCode -eq 200) 'hook receiver accepts the token'
 & $post $tok ($s -replace '%E%', 'UserPromptSubmit' -replace '}$', ',"prompt":"fix the login bug"}') | Out-Null
-& $post $tok ($s -replace '%E%', 'PermissionRequest') | Out-Null
+# a permission prompt is held for the list now (answerPermissions is on): send it from a job
+$held = Start-Job -ArgumentList $tok, ($s -replace '%E%', 'PermissionRequest') -ScriptBlock {
+  param($t, $b) (Invoke-WebRequest -Uri 'http://127.0.0.1:8033/hook' -Method Post -Headers @{ 'X-Deskling-Token' = $t } -Body $b -ContentType 'application/json' -TimeoutSec 120 -UseBasicParsing).Content }
 Start-Sleep 4
 Shot '2-session-waiting'
 Check (Running) 'still running after hooks'
+# the terminal answered it (any later event from that session): the held request gets {}
+& $post $tok ($s -replace '%E%', 'PreToolUse') | Out-Null
+Check ((Receive-Job $held -Wait -AutoRemoveJob) -eq '{}') 'a held prompt is released with {} when the terminal answers first'
 
 # ── 3a. the status line wrapper: quota and cost through Git Bash, as Claude Code runs it ──
 $sl = (Get-Content $settings -Raw | ConvertFrom-Json).statusLine

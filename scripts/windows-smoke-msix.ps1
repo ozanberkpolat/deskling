@@ -71,10 +71,15 @@ Check ($null -eq (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVers
 $tok = (Get-Content (Join-Path $own 'hook-token') -Raw).Trim()
 $post = { param($body) Invoke-WebRequest -Uri 'http://127.0.0.1:8033/hook' -Method Post -Headers @{ 'X-Deskling-Token' = $tok } -Body $body -ContentType 'application/json' -SkipHttpErrorCheck -TimeoutSec 5 }
 Check ((& $post '{"session_id":"m1","cwd":"C:\\work\\my-app","hook_event_name":"SessionStart"}').StatusCode -eq 200) 'hook receiver answers inside the package'
-& $post '{"session_id":"m1","cwd":"C:\\work\\my-app","hook_event_name":"PermissionRequest"}' | Out-Null
+# held for the list (answerPermissions is on): from a job, then released by the session's next event
+$held = Start-Job -ArgumentList $tok -ScriptBlock {
+  param($t) (Invoke-WebRequest -Uri 'http://127.0.0.1:8033/hook' -Method Post -Headers @{ 'X-Deskling-Token' = $t } -ContentType 'application/json' -TimeoutSec 120 -UseBasicParsing `
+    -Body '{"session_id":"m1","cwd":"C:\\work\\my-app","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"npm test"}}').Content }
 Start-Sleep 4
 Shot '2-waiting'
 Check (Running) 'still running'
+& $post '{"session_id":"m1","cwd":"C:\\work\\my-app","hook_event_name":"PreToolUse"}' | Out-Null
+Check ((Receive-Job $held -Wait -AutoRemoveJob) -eq '{}') 'a held prompt is released with {} when the terminal answers first'
 
 Copy-Item (Join-Path $own 'deskling.log') $Out -ErrorAction SilentlyContinue
 
