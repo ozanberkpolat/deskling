@@ -61,7 +61,10 @@ export function startHookServer({ port, token, onHook, log, holdPermission = () 
         return
       }
       const ev = p?.hook_event_name, session = p?.session_id
-      let meta = {}
+      // where the request came from (the Claude Code process, found by its port) and its terminal
+      let term = String(req.headers['x-term'] || '').slice(0, 40)
+      if (term.startsWith('$')) term = ''           // the variable was not set in that terminal
+      let meta = { remotePort: req.socket.remotePort, ...(term ? { term } : {}) }
       if (ev === 'PermissionRequest' && typeof session === 'string' && holdPermission()) {
         const id = randomBytes(6).toString('hex')
         held.set(id, { res, session, timer: setTimeout(() => finish(id, {}), holdMs) })
@@ -70,13 +73,19 @@ export function startHookServer({ port, token, onHook, log, holdPermission = () 
           const h = held.get(id)
           if (h && !res.writableEnded) { held.delete(id); clearTimeout(h.timer); onDone(id, h.session) }
         })
-        meta = { holdId: id }
-      } else {
-        send(res, 200)
-        // anything but another question from this session means the terminal answered first
-        if (ev !== 'PermissionRequest' && ev !== 'Notification' && typeof session === 'string') release(session)
+        meta = { ...meta, holdId: id }
+        try { onHook(p, meta) } catch (e) { log(`hook: ${e.message}`) }
+        return
       }
-      try { onHook(p, meta) } catch (e) { log(`hook: ${e.message}`) }
+      // anything but another question from this session means the terminal answered first
+      if (ev !== 'PermissionRequest' && ev !== 'Notification' && typeof session === 'string') release(session)
+      // onHook may need the connection open a moment longer (finding the process behind it): it
+      // returns a promise then, and the reply waits for it, never more than a second
+      let wait = null
+      try { wait = onHook(p, meta) } catch (e) { log(`hook: ${e.message}`) }
+      if (wait && typeof wait.then === 'function') {
+        Promise.race([wait, new Promise(r => setTimeout(r, 1000))]).catch(() => {}).finally(() => send(res, 200))
+      } else send(res, 200)
     })
   })
   srv.on('error', e => log(`hook receiver on 127.0.0.1:${port}: ${e.message}`))

@@ -32,10 +32,11 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
     if (!r) {
       const project = String(p.cwd || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || null
       r = { slim: { id, project, tmux: null, title: null, state: 'idle', since: t / 1000, last: null, ctx: null, ask: null, cost: null, host: 'laptop' },
-            updated: t, turnStarted: null, agents: new Set() }
+            updated: t, turnStarted: null, agents: new Set(), pid: null, pidTries: 0, term: null }
       S.set(id, r)
     }
     r.updated = t
+    if (meta.term) r.term = meta.term
     const s = r.slim
     const set = state => { if (s.state !== state) { s.state = state; s.since = t / 1000 } }
     const ev = p.hook_event_name, aid = p.agent_id
@@ -126,6 +127,20 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
     onSession(slimOf(r))
   }
 
+  // The Claude Code process behind a session (from its hook connection), so the list can bring its
+  // terminal forward. Looked up a few times at most: needsPid() says when to try.
+  const needsPid = id => { const r = S.get(id); return !!r && !r.pid && r.pidTries < 3 }
+  function setPid(id, pid) {
+    const r = S.get(id)
+    if (!r) return
+    r.pidTries++
+    if (!pid || r.pid === pid) return
+    r.pid = pid
+    r.slim.canShow = true
+    onSession(slimOf(r))
+  }
+  const target = id => { const r = S.get(id); return r?.pid ? { pid: r.pid, term: r.term, folder: r.slim.project } : null }
+
   // A status line payload (readStatusline): the session's running cost and context use. Sessions we
   // have not heard a hook from are left out: the list only shows what the hooks report.
   function statusline({ session, cost, ctx }) {
@@ -136,5 +151,5 @@ export function createLocal({ onSession, onGone, now = Date.now }) {
     onSession(slimOf(r))
   }
 
-  return { hook, decay, answered, dropAsk, statusline, get size() { return S.size } }
+  return { hook, decay, answered, dropAsk, statusline, needsPid, setPid, target, get size() { return S.size } }
 }

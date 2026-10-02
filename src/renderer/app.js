@@ -81,10 +81,18 @@ bridge.onFx(({ fx }) => {
   if (fx === 'yawn') dog.react('yawn')
 })
 
+let notice = '', noticeTimer = null
 function draw() {
   if (vm) renderList(list, vm, { openUrl: bridge.openUrl, openSession: bridge.openSession, answer: bridge.answer,
-    offerStatusline: cfg.offerStatusline && bridge.setupStatusline })
+    offerStatusline: cfg.offerStatusline && bridge.setupStatusline, notice })
 }
+// a short line at the bottom of the list ("Couldn't find that terminal"), gone after 4 s
+bridge.onNotice?.(text => {
+  notice = String(text || '')
+  clearTimeout(noticeTimer)
+  noticeTimer = setTimeout(() => { notice = ''; draw() }, 4000)
+  draw()
+})
 
 let clock = null, openedAt = 0
 function setOpen(v) {

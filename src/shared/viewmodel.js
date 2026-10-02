@@ -33,6 +33,8 @@ export function viewmodel(st, now = Date.now()) {
         : s.state === 'working' ? 'working' : 'idle'
     rows.push({ k: 'cc', id: s.id, group, project: s.project, title: s.title, state: s.state,
                 at: Math.round((s.since || 0) * 1000), detail: s.last, agents: s.agentsActive || 0, ctx: s.ctx ?? null,
+                // what a click does: this PC's terminal (once its process is known), or the relay's web terminal
+                open: s.host === 'laptop' ? (s.canShow ? 'terminal' : null) : (s.tmux ? 'web' : null),
                 ...(s.ask ? { ask: s.ask } : {}), ...(typeof s.cost === 'number' ? { cost: s.cost } : {}),
                 ...(s.host && !st.local ? { host: s.host } : {}) })   // no relay: every row is this machine's, no chip
   }

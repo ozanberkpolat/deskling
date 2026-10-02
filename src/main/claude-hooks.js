@@ -42,7 +42,9 @@ export function installHooks(file, { url, token }) {
   const d = strip(readSettings(file))
   d.hooks ??= {}
   for (const ev of EVENTS) {
-    (d.hooks[ev] ??= []).push({ hooks: [{ type: 'http', url, timeout: TIMEOUT[ev] || 5, headers: { 'X-Deskling-Token': token, 'X-Deskling-Mark': MARK } }] })
+    // X-Term tells a VS Code terminal from the rest when the list jumps to a session ("Show terminal")
+    (d.hooks[ev] ??= []).push({ hooks: [{ type: 'http', url, timeout: TIMEOUT[ev] || 5,
+      headers: { 'X-Deskling-Token': token, 'X-Deskling-Mark': MARK, 'X-Term': '$TERM_PROGRAM' }, allowedEnvVars: ['TERM_PROGRAM'] }] })
   }
   writeSettings(file, d)
 }

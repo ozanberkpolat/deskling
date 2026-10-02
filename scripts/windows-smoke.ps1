@@ -121,6 +121,41 @@ $job = Ask 'perm2'                                            # nobody answers t
 $answer = Receive-Job $job -Wait -AutoRemoveJob
 Check ($answer -eq '{}') 'an unanswered prompt gets {} after the hold (never an automatic allow)'
 
+# ── 3c. jump: a session's row brings its own console window to the front ──
+# A separate console window plays a Claude Code session: its own process sends the hooks, so
+# Deskling finds that process by its connection, and a click on the row must bring that window
+# forward (checked by the foreground window's title).
+Add-Type -Namespace Smoke -Name Fg -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder b, int n);'
+function FgTitle() { $b = New-Object System.Text.StringBuilder 256; [void][Smoke.Fg]::GetWindowText([Smoke.Fg]::GetForegroundWindow(), $b, 256); $b.ToString() }
+$fake = @"
+`$Host.UI.RawUI.WindowTitle = 'deskling-jump-target'
+`$h = @{ 'X-Deskling-Token' = '$tok' }
+foreach (`$e in 'SessionStart', 'UserPromptSubmit') {
+  Invoke-WebRequest -Uri 'http://127.0.0.1:8033/hook' -Method Post -Headers `$h -ContentType 'application/json' -UseBasicParsing ``
+    -Body ('{"session_id":"jump1","cwd":"C:\\work\\jumpme","hook_event_name":"' + `$e + '","prompt":"jump test"}') | Out-Null
+}
+Start-Sleep 120
+"@
+$fakeProc = Start-Process powershell.exe -ArgumentList '-NoProfile', '-EncodedCommand', [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($fake)) -PassThru
+Start-Sleep 6
+(New-Object -ComObject WScript.Shell).SendKeys('^%d')          # open the list: Deskling has the foreground now
+Start-Sleep 2
+$clicked = powershell.exe -NoProfile -Command @'
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+$A = [System.Windows.Automation.AutomationElement]
+$btn = New-Object System.Windows.Automation.PropertyCondition($A::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)
+foreach ($e in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants, $btn)) {
+  if ($e.Current.Name -like '*jumpme*') { $e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); 'clicked'; break }
+}
+'@
+Write-Host "jump row: $clicked"
+Start-Sleep 3
+Shot '2c-after-jump'
+$fg = FgTitle
+Write-Host "foreground window: $fg"
+Check ($fg -like '*deskling-jump-target*') 'clicking the row brings that session''s console window to the front'
+Stop-Process -Id $fakeProc.Id -Force -ErrorAction SilentlyContinue
+
 # ── 4. a brand-new user: the first-start question, before anything is written ──
 Stop-Process -Name deskling -Force; Start-Sleep 2
 & (Join-Path $programs 'Deskling\deskling.exe') --remove-hooks | Out-Null

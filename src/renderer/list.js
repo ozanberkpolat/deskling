@@ -30,7 +30,7 @@ export function rowParts(r, now = Date.now()) {
   return parts
 }
 
-export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer, offerStatusline } = {}) {
+export function renderList(root, vm, { now = Date.now(), openUrl, openSession, answer, offerStatusline, notice } = {}) {
   const frag = document.createDocumentFragment()
   let group = null
   for (const r of vm.rows) {
@@ -39,9 +39,9 @@ export function renderList(root, vm, { now = Date.now(), openUrl, openSession, a
     // a laptop session's terminal is already on this screen.
     // A held permission prompt: the row holds two real buttons, so it is not a button itself.
     const asking = r.ask && answer
-    const click = asking ? null : r.k === 'pc' ? (r.url && (() => openUrl?.(r.url))) : (!r.host && openSession && (() => openSession(r.id)))
+    const click = asking ? null : r.k === 'pc' ? (r.url && (() => openUrl?.(r.url))) : (r.open && openSession && (() => openSession(r.id)))
     const row = el(click ? 'button' : 'div', `row g-${r.group} k-${r.k}${r.fresh ? ' fresh' : ''}${asking ? ' asking' : ''}`)
-    if (click) { row.type = 'button'; row.addEventListener('click', click) }
+    if (click) { row.type = 'button'; row.addEventListener('click', click); if (r.open === 'terminal') row.title = 'Show terminal' }
     row.append(...rowParts(r, now))
     if (asking) row.append(askParts(r, answer))
     frag.append(row)
@@ -57,6 +57,7 @@ export function renderList(root, vm, { now = Date.now(), openUrl, openSession, a
   }
   const st = statusLine(vm)
   if (st) frag.append(el('div', 'status', st))
+  if (notice) frag.append(el('div', 'status notice', notice))
   root.replaceChildren(frag)
 }
 

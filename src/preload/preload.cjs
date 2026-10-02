@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('deskling', {
   onFx: on('fx'),
   onConfig: on('config'),
   onToggleList: on('toggle-list'),
+  onNotice: on('notice'),
   setListOpen: open => ipcRenderer.send('list', !!open),
   setInteractive: v => ipcRenderer.send('interactive', !!v),
   openUrl: url => ipcRenderer.send('open-url', String(url)),

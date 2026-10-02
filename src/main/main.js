@@ -16,6 +16,7 @@ import { describe } from './notify-text.js'
 import { isQuiet } from './quiet.js'
 import { startHookServer } from './hookserver.js'
 import { createLocal } from './local.js'
+import { createWinHelper } from './winhelper.js'
 import { limitsFrom, watchLimits } from './quota.js'
 import { installStatusline, readStatusline, removeStatusline } from './statusline.js'
 import { allowedLinks, safeExternal, sessionUrl } from './links.js'
@@ -68,7 +69,7 @@ function serveApp() {
 }
 
 let widget, store, tray, source, fullscreen
-let fsMuted = false, locked = false, hotkeyError = '', local = null, hooks = null
+let fsMuted = false, locked = false, hotkeyError = '', local = null, hooks = null, win = null
 // No sound while a full-screen app is in front, during quiet hours, or while the screen is locked.
 const quiet = () => isQuiet(new Date(), config.get().quietHours)
 const muted = () => fsMuted || locked || quiet()
@@ -179,6 +180,15 @@ function applyAutostart(c) {
 
 // a VPS session's terminal in the CC app (laptop sessions have no tmux: their terminal is right here)
 function openSession(id) {
+  const target = local?.target(String(id))
+  if (target && win) {                              // a session on this PC: bring its terminal forward
+    win.focus(target).then(r => {
+      if (r.ok) return
+      log(`could not bring the terminal forward (${r.error || r.how})`)
+      widget.send('notice', "Couldn't find that terminal")
+    })
+    return
+  }
   const c = config.get(), tmux = store.state.sessions[id]?.tmux
   const url = tmux && c.ccUrl && sessionUrl(c.ccUrl, tmux)
   if (url && safeExternal(url, allowedLinks(c))) shell.openExternal(url)
@@ -316,6 +326,7 @@ function start() {
   applyAutostart(config.get())
   applyHotkey(config.get())
   applyFullscreen(config.get())
+  win = createWinHelper({ log })
   local = createLocal({
     onSession: s => store.dispatch({ type: 'session', data: s }),
     onGone: id => store.dispatch({ type: 'gone', data: { id } }),
@@ -323,7 +334,12 @@ function start() {
   setInterval(() => local.decay(), 60_000)
   hooks = startHookServer({
     port: config.get().hookPort, token: hookToken(), log,
-    onHook: (p, meta) => local.hook(p, meta),
+    onHook: (p, meta) => {
+      local.hook(p, meta)
+      // the first events of a session: find its process while this request's connection is open
+      const id = p?.session_id
+      if (meta.remotePort && local.needsPid(id)) return win.pid(meta.remotePort, config.get().hookPort).then(pid => local.setPid(id, pid))
+    },
     holdPermission: () => config.get().answerPermissions && config.get().localHooks === true,
     holdMs: config.get().holdSeconds * 1000,
     onDone: (holdId, session) => local.dropAsk(session, holdId),
@@ -342,6 +358,6 @@ function start() {
 
 app.on('second-instance', () => widget?.show())
 app.on('window-all-closed', () => app.quit())
-app.on('before-quit', () => { source?.stop(); fullscreen?.stop(); store?.close(); config.close() })
+app.on('before-quit', () => { source?.stop(); fullscreen?.stop(); win?.stop(); store?.close(); config.close() })
 app.on('will-quit', () => globalShortcut.unregisterAll())
 app.whenReady().then(start)
