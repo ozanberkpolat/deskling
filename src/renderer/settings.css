@@ -1,0 +1,67 @@
+/* Settings: the widget's own palette (styles.css tokens), a framed window, no network. */
+:root {
+  --bg: #0a0e14; --panel: #141a24; --panel2: #171e29;
+  --border: rgba(140,160,190,.14); --border-2: rgba(140,160,190,.26);
+  --ink: #eaf0f7; --muted: #8a97a8; --faint: #5b6675;
+  --accent: #ff8a1e; --good: #2fd6a3; --info: #4c8dff;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { display: grid; grid-template-columns: 168px minmax(0, 1fr); background: var(--bg); color: var(--ink); font: 400 13.5px/1.5 var(--font); }
+
+nav { display: flex; flex-direction: column; gap: 2px; padding: 18px 10px; border-right: 1px solid var(--border); position: sticky; top: 0; height: 100vh; }
+nav a { color: var(--muted); text-decoration: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; }
+nav a:hover, nav a:focus-visible { color: var(--ink); background: rgba(140,160,190,.08); outline: none; }
+nav .ver { margin-top: auto; padding: 8px 12px; color: var(--faint); font: 600 11px var(--mono); }
+
+main { overflow-y: auto; height: 100vh; padding: 8px 28px 40px; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { main { scroll-behavior: auto; } }
+section { padding: 18px 0 20px; border-bottom: 1px solid var(--border); display: grid; gap: 10px; }
+section:last-child { border-bottom: 0; }
+h2 { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
+.note { margin: -4px 0 0; color: var(--faint); font-size: 12px; }
+
+.field { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 34px; }
+.label { color: var(--muted); min-width: 0; }
+.label.to { min-width: 0; }
+.unit { color: var(--faint); font-size: 12px; }
+.check { cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+
+input[type=range] { width: 200px; accent-color: var(--accent); }
+output { font: 600 12px var(--mono); color: var(--muted); min-width: 40px; font-variant-numeric: tabular-nums; }
+input[type=number], input[type=time] {
+  background: var(--panel); color: var(--ink); border: 1px solid var(--border-2); border-radius: 8px;
+  padding: 6px 8px; font: 600 13px var(--mono); width: 92px;
+}
+input[type=time] { width: 128px; }
+input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+button { font: 600 12.5px var(--font); color: var(--ink); background: var(--panel); border: 1px solid var(--border-2); border-radius: 8px; padding: 0 14px; min-height: 34px; cursor: pointer; }
+button:hover:not(:disabled) { background: var(--panel2); border-color: rgba(140,160,190,.4); }
+button.ghost { background: none; color: var(--muted); }
+button.key { font-family: var(--mono); min-width: 150px; }
+button.key.recording { border-color: var(--accent); color: var(--accent); }
+.buttons { gap: 8px; }
+.done { color: var(--good); font-size: 12px; }
+
+.seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; flex-wrap: wrap; }
+.seg button { border: 0; background: none; color: var(--muted); min-height: 30px; border-radius: 7px; }
+.seg button[aria-checked="true"] { background: var(--panel2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--border-2); }
+
+.mascots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.mascots button { display: grid; justify-items: center; gap: 4px; padding: 8px 4px 8px; min-height: 0; background: var(--panel); }
+.mascots button canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+.mascots button span { font-size: 12px; color: var(--muted); }
+.mascots button[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.mascots button[aria-checked="true"] span { color: var(--ink); }
+
+@media (max-width: 620px) {
+  body { grid-template-columns: minmax(0, 1fr); }
+  nav { display: none; }
+  .mascots { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+[hidden] { display: none !important; }

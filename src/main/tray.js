@@ -14,7 +14,7 @@ export function icon(grey = false, mascot = 'shiba') {
   return img
 }
 
-export function createTray({ config, widget, log, statusText, onQuit, askStatusline }) {
+export function createTray({ config, widget, log, statusText, onQuit, askStatusline, openSettings }) {
   const tray = new Tray(icon(true, config.get().mascot))
   tray.setToolTip('Deskling')
   let grey = true, shown = config.get().mascot
@@ -27,6 +27,7 @@ export function createTray({ config, widget, log, statusText, onQuit, askStatusl
     const displays = screen.getAllDisplays()
     return Menu.buildFromTemplate([
       { label: statusText(), enabled: false },
+      { label: 'Settings…', click: openSettings },
       { type: 'separator' },
       { label: 'Sound', type: 'checkbox', checked: c.sound.enabled, click: i => config.set({ sound: { ...c.sound, enabled: i.checked } }) },
       { label: 'Volume', submenu: [25, 50, 75, 100].map(v => ({

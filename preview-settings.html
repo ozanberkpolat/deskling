@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Deskling settings preview</title>
+<link rel="stylesheet" href="src/renderer/settings.css">
+<!-- The real settings page with a mocked bridge: every change is logged to the console. Not packaged. -->
+<script>
+let cfg = { version: '1.1.0-dev', store: false, mascot: 'shiba', shape: 'round', corner: 'tr', idleOpacity: 0.45, tucked: false,
+  sound: { enabled: true, volume: 0.6 }, quietHours: { from: '20:00', to: '08:00' }, nagAfterMin: 5, finishedTtlMin: 30,
+  hotkey: 'Control+Alt+D', hideInFullscreen: true, hideFromCapture: true, autostart: true, localHooks: true,
+  answerPermissions: true, statusline: null, holdSeconds: 90, hookPort: 8033 }
+const subs = []
+window.deskling = {
+  getConfig: async () => cfg,
+  setConfig: patch => { cfg = { ...cfg, ...patch }; console.log('setConfig', JSON.stringify(patch)); subs.forEach(f => f(cfg)) },
+  onFullConfig: f => subs.push(f),
+  copyDiagnostics: async () => true, openConfig: () => console.log('openConfig'), openLog: () => console.log('openLog'),
+}
+</script>
+</head>
+<body>
+<nav aria-label="Sections">
+  <a href="#look">Look</a>
+  <a href="#sound">Sound</a>
+  <a href="#quiet">Quiet</a>
+  <a href="#behaviour">Behaviour</a>
+  <a href="#claude">Claude Code</a>
+  <a href="#advanced">Advanced</a>
+  <span class="ver" id="ver"></span>
+</nav>
+<main>
+  <section id="look">
+    <h2>Look</h2>
+    <div class="mascots" id="mascots" role="radiogroup" aria-label="Mascot"></div>
+    <div class="field"><span class="label">Shape</span><div class="seg" id="shape" role="radiogroup" aria-label="Shape">
+      <button type="button" data-v="round">Round</button><button type="button" data-v="square">Square</button></div></div>
+    <div class="field"><span class="label">Corner</span><div class="seg" id="corner" role="radiogroup" aria-label="Corner">
+      <button type="button" data-v="tl">Top left</button><button type="button" data-v="tr">Top right</button>
+      <button type="button" data-v="bl">Bottom left</button><button type="button" data-v="br">Bottom right</button></div></div>
+    <label class="field"><span class="label">See-through while idle</span>
+      <input type="range" id="idleOpacity" min="10" max="100" step="5"><output id="idleOpacityOut"></output></label>
+    <label class="field check"><input type="checkbox" id="tucked"><span>Tucked into the screen edge</span></label>
+  </section>
+
+  <section id="sound">
+    <h2>Sound</h2>
+    <label class="field check"><input type="checkbox" id="soundOn"><span>Call out when a session needs you</span></label>
+    <label class="field"><span class="label">Volume</span>
+      <input type="range" id="volume" min="0" max="100" step="5"><output id="volumeOut"></output>
+      <button type="button" class="ghost" id="testSound">Play</button></label>
+  </section>
+
+  <section id="quiet">
+    <h2>Quiet hours</h2>
+    <p class="note">No sound and no notifications in this window; the mascot still shows what happens. Also quiet while the screen is locked.</p>
+    <label class="field check"><input type="checkbox" id="quietOn"><span>Quiet hours</span></label>
+    <div class="field"><span class="label">From</span><input type="time" id="quietFrom"><span class="label to">to</span><input type="time" id="quietTo"></div>
+  </section>
+
+  <section id="behaviour">
+    <h2>Behaviour</h2>
+    <label class="field"><span class="label">Call again if still waiting after</span><input type="number" id="nagAfterMin" min="0" max="1440"><span class="unit">min (0: never)</span></label>
+    <label class="field"><span class="label">A finished session counts as new for</span><input type="number" id="finishedTtlMin" min="1" max="1440"><span class="unit">min</span></label>
+    <div class="field"><span class="label">Open the list from anywhere</span>
+      <button type="button" class="key" id="hotkey" aria-describedby="hotkeyHelp"></button>
+      <button type="button" class="ghost" id="hotkeyOff">None</button></div>
+    <p class="note" id="hotkeyHelp">Click, then press the keys (for example Ctrl+Alt+D). Esc cancels.</p>
+    <label class="field check"><input type="checkbox" id="hideInFullscreen"><span>Hide during full-screen apps and presentations</span></label>
+    <label class="field check"><input type="checkbox" id="hideFromCapture"><span>Hide from screen sharing and screenshots</span></label>
+    <label class="field check" id="autostartRow"><input type="checkbox" id="autostart"><span>Start at login</span></label>
+    <p class="note" id="autostartStore" hidden>Start at login is set in Windows: Settings, Apps, Startup.</p>
+  </section>
+
+  <section id="claude">
+    <h2>Claude Code</h2>
+    <label class="field check"><input type="checkbox" id="localHooks"><span>Watch Claude Code on this PC</span></label>
+    <p class="note">Adds Deskling's hooks to your Claude Code settings (backed up once); turning this off takes them out again.</p>
+    <label class="field check"><input type="checkbox" id="answerPermissions"><span>Answer permission prompts from the list (Allow / Deny)</span></label>
+    <label class="field"><span class="label">A prompt waits for the list up to</span><input type="number" id="holdSeconds" min="5" max="110"><span class="unit">s, then only the terminal decides</span></label>
+    <label class="field check"><input type="checkbox" id="statusline"><span>Show plan quota and session cost</span></label>
+    <p class="note">Adds a few lines in front of your Claude Code status line command (yours keeps running, unchanged, and is put back when you turn this off).</p>
+  </section>
+
+  <section id="advanced">
+    <h2>Advanced</h2>
+    <label class="field"><span class="label">Local port for the hooks</span><input type="number" id="hookPort" min="1024" max="65535"><span class="unit">takes effect after a restart</span></label>
+    <div class="field buttons">
+      <button type="button" id="diagnostics">Copy diagnostics</button>
+      <button type="button" class="ghost" id="openConfig">Open the settings file</button>
+      <button type="button" class="ghost" id="openLog">Open the log</button>
+      <span class="done" id="copied" role="status"></span>
+    </div>
+    <p class="note">Diagnostics are the version, Windows build, your settings without the token, and the end of the log. Never your prompts. Paste them into a GitHub issue.</p>
+  </section>
+</main>
+<script type="module" src="src/renderer/settings.js"></script>
+</body>
+</html>

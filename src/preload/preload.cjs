@@ -16,6 +16,13 @@ contextBridge.exposeInMainWorld('deskling', {
   answer: (holdId, session, allow) => ipcRenderer.send('answer', String(holdId), String(session), allow === true),
   showMenu: () => ipcRenderer.send('menu'),
   setupStatusline: () => ipcRenderer.send('setup-statusline'),
+  // the settings window
+  getConfig: () => ipcRenderer.invoke('get-config'),
+  setConfig: patch => ipcRenderer.send('set-config', patch),
+  onFullConfig: on('full-config'),
+  copyDiagnostics: () => ipcRenderer.invoke('copy-diagnostics'),
+  openConfig: () => ipcRenderer.send('open-config'),
+  openLog: () => ipcRenderer.send('open-log'),
   ack: () => ipcRenderer.send('ack'),
   dragStart: () => ipcRenderer.send('drag-start'),
   dragEnd: () => ipcRenderer.invoke('drag-end'),

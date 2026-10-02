@@ -1,6 +1,7 @@
 // Deskling main process. Flags: --gallery (every clip, for sprite work), --replay=<file.jsonl>[,speed],
 // --remove-hooks (take our hooks out of ~/.claude/settings.json and exit; the uninstaller runs it).
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, powerMonitor, protocol, session, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, powerMonitor, protocol, session, shell } from 'electron'
+import { release } from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -210,6 +211,31 @@ async function askLocalHooks() {
   config.set({ localHooks: response === 0 })
 }
 
+// ── the settings window: one at a time, the widget's palette, same no-network rules ──
+let settingsWin = null
+const SETTABLE = ['shape', 'corner', 'mascot', 'idleOpacity', 'tucked', 'sound', 'quietHours', 'nagAfterMin', 'finishedTtlMin',
+  'hotkey', 'hideInFullscreen', 'hideFromCapture', 'autostart', 'localHooks', 'answerPermissions', 'statusline', 'holdSeconds', 'hookPort']
+const fullConfig = () => { const { token, relayUrl, ccUrl, linkHosts, ...c } = config.get(); return { ...c, store: STORE, version: app.getVersion() } }
+
+function openSettings() {
+  if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); return }
+  settingsWin = new BrowserWindow({ width: 760, height: 720, minWidth: 420, minHeight: 420, title: 'Deskling settings', icon: icon(),
+    backgroundColor: '#0a0e14', autoHideMenuBar: true, show: false,
+    webPreferences: { preload: join(ROOT, 'src', 'preload', 'preload.cjs'), contextIsolation: true, sandbox: true } })
+  settingsWin.once('ready-to-show', () => settingsWin.show())
+  settingsWin.on('closed', () => { settingsWin = null })
+  settingsWin.loadURL('app://deskling/src/renderer/settings.html')
+}
+
+// What a bug report needs, and nothing personal: no token, no relay, no prompt text (the log has none).
+function diagnostics() {
+  let tail = ''
+  try { tail = readFileSync(log.file, 'utf8').split(/\r?\n/).slice(-40).join('\n') } catch {}
+  return [`Deskling ${app.getVersion()} (${STORE ? 'Microsoft Store' : 'installer'}${app.isPackaged ? '' : ', dev'})`,
+    `Electron ${process.versions.electron}, Windows ${release()}, ${process.arch}`,
+    `Settings: ${JSON.stringify(fullConfig())}`, '', 'Log (last 40 lines):', tail].join('\n')
+}
+
 function startGallery() {
   const win = new BrowserWindow({ width: 980, height: 720, title: 'Deskling gallery', icon: icon(),
     backgroundColor: '#0a0e14', webPreferences: { contextIsolation: true, sandbox: true } })
@@ -272,7 +298,8 @@ function start() {
       widget.send('view', lastView || store.view)
     },
   })
-  tray = createTray({ config, widget, log, statusText, onQuit: () => app.quit(), askStatusline })
+  tray = createTray({ config, widget, log, statusText, onQuit: () => app.quit(), askStatusline, openSettings })
+  if (arg('settings')) openSettings()
 
   ipcMain.on('list', (e, open) => {
     if (!fromApp(e)) return
@@ -287,6 +314,15 @@ function start() {
   })
   ipcMain.on('open-session', (e, id) => { if (fromApp(e)) openSession(id) })
   ipcMain.on('setup-statusline', e => { if (fromApp(e)) askStatusline() })
+  ipcMain.handle('get-config', e => (fromApp(e) ? fullConfig() : null))
+  ipcMain.on('set-config', (e, patch) => {
+    if (!fromApp(e) || !patch || typeof patch !== 'object') return
+    const ok = Object.fromEntries(Object.entries(patch).filter(([k]) => SETTABLE.includes(k)))
+    if (Object.keys(ok).length) config.set(ok)                 // normalize() checks every value
+  })
+  ipcMain.handle('copy-diagnostics', e => { if (!fromApp(e)) return false; clipboard.writeText(diagnostics()); return true })
+  ipcMain.on('open-config', e => { if (fromApp(e)) shell.openPath(config.file) })
+  ipcMain.on('open-log', e => { if (fromApp(e)) shell.openPath(log.file) })
   // Allow / Deny from the list: answers the held hook request, if it is still held.
   ipcMain.on('answer', (e, holdId, session, allow) => {
     if (!fromApp(e) || !hooks) return
@@ -301,6 +337,7 @@ function start() {
 
   let prev = config.get(), prevToken = config.token()
   config.on('change', c => {
+    settingsWin?.webContents.send('full-config', fullConfig())
     widget.applyConfig(c)
     widget.send('config', rendererConfig(c))
     store.setTimes(c)

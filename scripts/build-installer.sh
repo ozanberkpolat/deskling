@@ -11,7 +11,7 @@ node scripts/make-icon.mjs
 ICON=(); command -v wine >/dev/null && ICON=(--icon=build/icon.ico)
 npx @electron/packager . deskling --platform=win32 --arch=x64 --asar --out=dist --overwrite \
   --app-version="$VERSION" "${ICON[@]}" \
-  --ignore='^/(fixtures|test|scripts|dist|build|docs|videos|installer|preview\.html|\.github)($|/)'
+  --ignore='^/(fixtures|test|scripts|dist|build|docs|videos|installer|preview(-settings)?\.html|\.github)($|/)'
 docker run --rm -v "$PWD:/w" -w /w/installer debian:stable-slim sh -c \
   "apt-get update -qq >/dev/null && apt-get install -y -qq nsis >/dev/null && makensis -V2 -DVERSION=$VERSION deskling.nsi && chown $(id -u):$(id -g) ../dist/deskling-setup.exe"
 ls -l dist/deskling-setup.exe

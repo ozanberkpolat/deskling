@@ -163,7 +163,7 @@ Check (Until { (Ours).Count -eq 0 }) '--remove-hooks takes our hooks out'
 Check ((Theirs).Count -eq 1) "--remove-hooks keeps the user's hook"
 Check ($null -eq (Get-Content $settings -Raw | ConvertFrom-Json).statusLine) '--remove-hooks puts the status line back (there was none)'
 Remove-Item -Recurse -Force $appdata, $old
-Start-Process (Join-Path $programs 'Deskling\deskling.exe')
+Start-Process (Join-Path $programs 'Deskling\deskling.exe') -ArgumentList '--settings'      # the settings window opens too
 Start-Sleep 8
 Shot '3-first-start-question'
 Check (Running) 'first start with the question on screen: no crash'
@@ -191,6 +191,27 @@ Write-Host "first-start button: $($hits.Count) match(es), pressed=$done"
 '@
 Check (Until { (Ours).Count -eq 10 } 20) 'answering "Watch Claude Code" adds the hooks'
 Shot '4-after-yes'
+
+# ── 4b. the settings window: a click there changes config.json ──
+$cfgFile = Join-Path $appdata 'config.json'
+$set = powershell.exe -NoProfile -Command @'
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+$A = [System.Windows.Automation.AutomationElement]
+$win = $A::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children, (New-Object System.Windows.Automation.PropertyCondition($A::NameProperty, 'Deskling settings')))
+if (-not $win) { 'no settings window'; exit }
+$b = $win.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition($A::NameProperty, 'Bottom left')))
+if (-not $b) { 'no button'; exit }
+$p = $null
+if ($b.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$p)) { $p.Invoke(); 'invoked'; exit }
+# a radio-role button may offer no Invoke: a real click in its middle
+Add-Type -Namespace W -Name U -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y); [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);'
+$r = $b.Current.BoundingRectangle
+[W.U]::SetCursorPos([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2)); Start-Sleep -Milliseconds 200
+[W.U]::mouse_event(2, 0, 0, 0, 0); [W.U]::mouse_event(4, 0, 0, 0, 0); 'clicked'
+'@
+Write-Host "settings: $set"
+Shot '4b-settings'
+Check (Until { (Get-Content $cfgFile -Raw | ConvertFrom-Json).corner -eq 'bl' } 10) 'the settings window changes the corner in config.json'
 
 # ── 5. uninstall ──
 (Start-Process (Join-Path $programs 'Deskling\Uninstall Deskling.exe') -ArgumentList '/S' -PassThru).WaitForExit()
