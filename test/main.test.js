@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Config, DEFAULTS, migrateFrom, normalize } from '../src/main/config.js'
@@ -81,13 +81,18 @@ test('config: settings from cc-dog (the earlier name) are copied once, never ove
   try {
     assert.equal(migrateFrom(old, now), false)                                 // nothing to copy
     mkdirSync(old)
-    writeFileSync(join(old, 'config.json'), '{"corner":"bl","localHooks":true}')
+    writeFileSync(join(old, 'config.json'), '{"corner":"bl","localHooks":true,"relayUrl":"http://100.1.2.3:8032","token":"t","tokenFile":"","ccUrl":"https://x.example/cc/"}')
     writeFileSync(join(old, 'hook-token'), 'abc')
+    writeFileSync(join(old, 'token'), 'relay-secret')
     writeFileSync(join(old, 'cc-dog.log'), 'old log')
     mkdirSync(now)                                                             // Electron makes the dir first
     assert.equal(migrateFrom(old, now), true)
     assert.equal(readFileSync(join(now, 'hook-token'), 'utf8'), 'abc')
     assert.equal(new Config(now).get().corner, 'bl')
+    assert.equal(new Config(now).get().relayUrl, '', 'the relay stays behind')
+    assert.equal(new Config(now).get().ccUrl, '')
+    assert.ok(!existsSync(join(now, 'token')), 'so does its token')
+    assert.ok(!readFileSync(join(now, 'config.json'), 'utf8').includes('tokenFile'))
     writeFileSync(join(old, 'config.json'), '{"corner":"tl"}')
     assert.equal(migrateFrom(old, now), false)                                 // ours exists: left alone
     assert.equal(new Config(now).get().corner, 'bl')

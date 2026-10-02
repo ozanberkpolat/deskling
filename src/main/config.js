@@ -64,11 +64,18 @@ export function normalize(raw = {}) {
 
 // This app was called cc-dog before. Its settings and tokens move over once, on the first start
 // that has no config of its own yet (the log stays behind). Returns true when it copied.
-export const MIGRATE = ['config.json', 'token', 'hook-token']
+// cc-dog's remote relay (address, its token, the web links) stays behind: on someone else's PC it
+// pointed at a relay they never set up, and the list said "cc-backend: connecting" for ever.
+export const RELAY_KEYS = ['relayUrl', 'token', 'tokenFile', 'ccUrl', 'linkHosts']
 export function migrateFrom(oldDir, dir) {
   if (existsSync(join(dir, 'config.json')) || !existsSync(join(oldDir, 'config.json'))) return false
+  let old
+  try { old = JSON.parse(readFileSync(join(oldDir, 'config.json'), 'utf8')) } catch { return false }
+  if (!old || typeof old !== 'object') return false
+  for (const k of RELAY_KEYS) delete old[k]
   mkdirSync(dir, { recursive: true })
-  for (const f of MIGRATE) if (existsSync(join(oldDir, f))) copyFileSync(join(oldDir, f), join(dir, f))
+  writeFileSync(join(dir, 'config.json'), JSON.stringify(old, null, 2) + '\n')
+  if (existsSync(join(oldDir, 'hook-token'))) copyFileSync(join(oldDir, 'hook-token'), join(dir, 'hook-token'))
   return true
 }
 
