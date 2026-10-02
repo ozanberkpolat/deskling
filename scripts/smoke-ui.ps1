@@ -46,3 +46,11 @@ function CloseList() {
   if ((ListState) -eq 'open') { (New-Object -ComObject WScript.Shell).SendKeys('^%d'); Start-Sleep 1 }
   Write-Host "list: $(ListState) after closing"
 }
+# a key press the way a keyboard makes it, scan code included: Chromium reads e.code (WASD by
+# position) from the scan code, and WScript's SendKeys sends none, so e.code came through empty
+Add-Type -Namespace SmokeUi -Name Kb -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte k, byte s, uint f, UIntPtr e); [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint c, uint t);'
+function Key($ch) {
+  $vk = [byte][char]$ch.ToUpper(); $sc = [byte][SmokeUi.Kb]::MapVirtualKey($vk, 0)
+  [SmokeUi.Kb]::keybd_event($vk, $sc, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 50
+  [SmokeUi.Kb]::keybd_event($vk, $sc, 2, [UIntPtr]::Zero)
+}

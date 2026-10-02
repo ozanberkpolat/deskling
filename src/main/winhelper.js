@@ -32,6 +32,9 @@ Add-Type -Namespace Deskling -Name W -MemberDefinition @'
 [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
 '@
 $A = [System.Windows.Automation.AutomationElement]
+# the first call of each loads its module (seconds); do it now, not during a hook's 1 s pid lookup
+Get-NetTCPConnection -LocalPort 1 -ErrorAction SilentlyContinue | Out-Null
+Get-CimInstance Win32_Process -Filter 'ProcessId=0' -ErrorAction SilentlyContinue | Out-Null
 function Front($h) {
   if ([Deskling.W]::IsIconic($h)) { [void][Deskling.W]::ShowWindow($h, 9) }
   [Deskling.W]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [Deskling.W]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)   # a tap of Alt lets us take the foreground

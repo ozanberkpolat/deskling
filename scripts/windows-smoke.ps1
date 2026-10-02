@@ -130,13 +130,12 @@ Check ($answer -match '"behavior":"allow"') 'Allow in the list answers the held 
 # WASD: A alone answers nothing (no highlight yet); S then A allows the highlighted question
 $job = Ask 'perm3'
 Start-Sleep 3
-$ws = New-Object -ComObject WScript.Shell
 CloseList; OpenList                                           # opened by the hotkey, so the list has the keyboard
-$ws.SendKeys('a'); Start-Sleep 2
+Key 'a'; Start-Sleep 2
 Check ($job.State -eq 'Running') 'WASD: a stray A (no W/S first) answers nothing'
-$ws.SendKeys('s'); Start-Sleep 1
+Key 's'; Start-Sleep 1
 Shot '2d-wasd-highlight'
-$ws.SendKeys('a')
+Key 'a'
 $answer = Receive-Job $job -Wait -AutoRemoveJob
 Check ($answer -match '"behavior":"allow"') 'WASD: S then A allows the highlighted question'
 CloseList
