@@ -16,7 +16,8 @@ export const IDENTITY = {
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const pkg = JSON.parse(readFileSync(root + 'package.json', 'utf8'))
-const version = (process.env.DESKLING_VERSION || pkg.version).split('.').concat('0', '0', '0').slice(0, 3).join('.') + '.0'
+// x.y.z.0: the Store keeps the fourth number for itself; anything that is not a plain number counts as 0
+const version = (process.env.DESKLING_VERSION || pkg.version).split('.').concat('0', '0', '0').slice(0, 3).map(n => (/^\d+$/.test(n) ? n : '0')).join('.') + '.0'
 const out = root + 'dist/msix/'
 
 rmSync(out, { recursive: true, force: true })

@@ -43,7 +43,7 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          $version = if ('${{ github.ref_name }}' -like 'v*') { '${{ github.ref_name }}'.TrimStart('v') } else { (node -p "require('./package.json').version") }
+          $version = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}'.TrimStart('v') } else { (node -p "require('./package.json').version") }
           node scripts/make-icon.mjs
           npx @electron/packager . deskling --platform=win32 --arch=x64 --asar --out=dist --overwrite `
             --app-version=$version --icon=build/icon.ico `
@@ -61,7 +61,7 @@ jobs:
       - name: Microsoft Store package (unsigned; the Store signs it)
         shell: pwsh
         run: |
-          $env:DESKLING_VERSION = if ('${{ github.ref_name }}' -like 'v*') { '${{ github.ref_name }}'.TrimStart('v') } else { '' }
+          $env:DESKLING_VERSION = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}'.TrimStart('v') } else { '' }
           node scripts/make-msix.mjs
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $sdk = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64' -Directory | Sort-Object Name | Select-Object -Last 1
